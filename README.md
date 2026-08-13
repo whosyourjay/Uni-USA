@@ -101,15 +101,15 @@ Graduation does not change the score distribution. Final degree counts weight
 institutions, but the model makes no ability adjustment for differential dropout.
 It also treats the reported transfer origin as the only transfer.
 
-The SAT center averages the reading/writing and math median percentile ranks;
-the ACT center uses the composite median percentile rank. Both use percentiles
-among actual test takers. They remain separate routes throughout the final
-mixture.
+The SAT center averages the transformed percentiles of the published total-score
+q25 and q75 anchors; the ACT center does the same with its composite anchors.
+Both use percentiles among actual test takers. Within each rounded SAT percentile
+label, its implied interval is divided evenly among the score buckets. SAT and
+ACT remain separate routes throughout the final mixture.
 
 Across institutions with complete score bars, the SAT mixture contains 846,098
-submitters and has center 71.59; the ACT mixture contains 673,599 and has center
-76.26. The route centers are SAT/ACT 97.25/99.03 at Harvard, 96.75/98.45 at
-Stanford, 93.00/97.88 at Berkeley, and 92.25/96.48 at UCLA.
+submitters and has center 72.09; the ACT mixture contains 673,599 and has center
+76.26.
 
 The pooled transfer score is the transfer-out-weighted median of origin-school
 freshman scores. Unscored origins use their institution-type median. This first
@@ -143,6 +143,7 @@ python3 fetch_sources.py
 python3 pathways.py
 python3 ability.py
 python3 calibrate_tests.py
+python3 sat_seat_ratio.py
 python3 special_routes.py
 python3 origins.py
 python3 transfer.py

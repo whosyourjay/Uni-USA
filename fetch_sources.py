@@ -23,6 +23,14 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/ADM2019_Dict.zip",
         "c21b76d466305e7fb4fe82fd3403cd247c607a3558de3ef7fc66d457a396137c",
     ),
+    "ADM2017.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2017.zip",
+        "3e92d1853aca4363ce89abeba8b0ef0237a6bc7b4a07b436d5ae5f38b61ac649",
+    ),
+    "ADM2018.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2018.zip",
+        "0dffbbc32e2d15dd533ad704482af383be2ee3d4c1de038bc55aecedc2639359",
+    ),
     "IC2019.zip": (
         "https://nces.ed.gov/ipeds/datacenter/data/IC2019.zip",
         "5f90c01bef16c0b058930c568a12dd068779399fdca76f45acbf2a758e652563",
@@ -75,6 +83,27 @@ SOURCES = {
         "https://research.collegeboard.org/reports/sat-suite/"
         "understanding-scores/sat",
         "c88392bdaf865dac481a0c195e7339d645d177dc1f46462ef856d29305a18eea",
+    ),
+    "sat-percentile-1600.csv": (
+        "https://docs.google.com/spreadsheets/d/e/"
+        "2PACX-1vRVCIukssgc3z5-8GpH3achzkJhbxD0TID_q8Xa-1oZIsF_NMy-"
+        "U5exxEUr8EZi2Q/pub?gid=273576492&single=true&output=csv",
+        "ad23e1bb584e85e95702257a26d4b94178f25ca354e1e72206802338d579f35e",
+    ),
+    "2017-total-group-sat-report.pdf": (
+        "https://reports.collegeboard.org/media/pdf/"
+        "2017-total-group-sat-suite-assessments-annual-report.pdf",
+        "938bc65a2a9fa11f82ba68c7bd28b64b1206585349bc9fa30883cf5b10b6e827",
+    ),
+    "2018-total-group-sat-report.pdf": (
+        "https://reports.collegeboard.org/media/pdf/"
+        "2018-total-group-sat-suite-assessments-annual-report.pdf",
+        "250c8e6c92158f3efb4c6c19ef993f0723013ed9d94725e5dedd01b218f45c51",
+    ),
+    "2019-total-group-sat-report.pdf": (
+        "https://reports.collegeboard.org/media/pdf/"
+        "2019-total-group-sat-suite-assessments-annual-report.pdf",
+        "55a088435042d9eb22dc0246b02624ae8e8218b82d84608ffe429887f3b0f1de",
     ),
     "2018-act-national-profile.pdf": (
         "https://www.act.org/content/dam/act/unsecured/documents/cccr2018/"

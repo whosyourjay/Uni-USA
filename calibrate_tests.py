@@ -7,14 +7,18 @@ percentiles use the exact composite-score frequencies for ACT-tested 2018 high
 school graduates, the nearest complete official frequency table to the fall
 2019 admissions baseline.
 
-IPEDS publishes q25 and q75 but no median.  Under ability.py's three-segment
-distribution, the median raw score is the midpoint of q25 and q75.  For SAT we
-convert the two section medians independently and average their percentile
-ranks; adding marginal section quantiles would not recover a total-score
-quantile.  ACT uses the composite median directly.
+IPEDS publishes q25 and q75 but no median.  We convert both published anchors
+to test-taker percentiles and average the two transformed values.  For SAT the
+anchors are ERW25 + Math25 and ERW75 + Math75.  This retains more information
+than converting an invented raw-score midpoint, especially in the upper tail.
+
+College Board publishes integer percentile labels.  Within every rounded label
+we divide its implied percentile interval evenly among the score buckets.  For
+example, the six 2019 scores labeled 99+ divide the interval from 99.5 to 100.
 """
 
 from collections import defaultdict
+import csv
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -26,6 +30,7 @@ import pathways
 
 ROOT = Path(__file__).parent
 SAT_PERCENTILES = ROOT / "sources" / "SAT-national-percentiles.html"
+SAT_ANNUAL_PERCENTILES = ROOT / "sources" / "sat-percentile-1600.csv"
 ACT_PROFILE = ROOT / "sources" / "2018-act-national-profile.pdf"
 
 
@@ -99,6 +104,43 @@ def load_sat_user_percentiles(path=SAT_PERCENTILES):
         output["math"][score] = percentile_number(row[4])
     if any(set(table) != set(range(200, 801, 10)) for table in output.values()):
         raise ValueError("Incomplete College Board SAT section percentile table")
+    return output
+
+
+def rounded_percentile_interval(label):
+    """Return the latent interval represented by a published percentile."""
+    label = label.strip()
+    if label == "99+":
+        return 99.5, 100.0
+    if label == "1-":
+        return 0.0, 0.5
+    center = float(label.rstrip("%"))
+    return max(0.0, center - 0.5), min(100.0, center + 0.5)
+
+
+def load_sat_total_user_percentiles(year=2019, path=SAT_ANNUAL_PERCENTILES):
+    """Interpolate an annual total-score CDF within rounded user percentiles."""
+    with path.open(encoding="utf-8-sig", newline="") as source:
+        rows = list(csv.DictReader(source))
+    score_field = next(iter(rows[0]))
+    labels = {
+        int(row[score_field]): row[str(year)].strip()
+        for row in rows
+        if row[score_field].strip() and row[str(year)].strip()
+    }
+    if set(labels) != set(range(400, 1601, 10)):
+        raise ValueError(f"Incomplete {year} SAT total percentile table")
+
+    grouped = defaultdict(list)
+    for score, label in labels.items():
+        grouped[label].append(score)
+    output = {}
+    for label, scores in grouped.items():
+        lower, upper = rounded_percentile_interval(label)
+        scores.sort()
+        width = (upper - lower) / len(scores)
+        for index, score in enumerate(scores):
+            output[score] = lower + (index + 0.5) * width
     return output
 
 
@@ -189,8 +231,10 @@ def component_percentile_rows(component_rows, sat_tables=None, act_table=None):
     return output
 
 
-def route_percentile_rows(component_rows):
+def route_percentile_rows(component_rows, sat_total_table=None):
     """Produce one percentile row per institution and test route."""
+    if sat_total_table is None:
+        sat_total_table = load_sat_total_user_percentiles()
     grouped = defaultdict(list)
     for row in component_rows:
         grouped[(row["unitid"], row["route"])].append(row)
@@ -202,21 +246,41 @@ def route_percentile_rows(component_rows):
             continue
         by_component = {row["component"]: row for row in rows}
         first = rows[0]
+        if route == "SAT":
+            q25_sum = sum(row["score_q25_2019"] for row in rows)
+            q75_sum = sum(row["score_q75_2019"] for row in rows)
+            anchor_percentiles = (
+                interpolate(sat_total_table, q25_sum),
+                interpolate(sat_total_table, q75_sum),
+            )
+        else:
+            q25_sum = q75_sum = ""
+            anchor_percentiles = (
+                rows[0]["test_taker_percentile_q25"],
+                rows[0]["test_taker_percentile_q75"],
+            )
+        route_center = sum(anchor_percentiles) / 2
         result = {
             "unitid": unitid,
             "institution": first["institution"],
             "state": first["state"],
             "route": route,
             "submitters_2019": first["submitters_2019"],
-            "estimated_route_central_test_taker_percentile": sum(
-                row["test_taker_percentile_median"] for row in rows
-            ) / len(rows),
-            "percentile_population": first["percentile_population"],
-            "route_statistic": (
-                "mean of ERW and Math modeled-median percentile ranks"
+            "estimated_route_central_test_taker_percentile": route_center,
+            "percentile_population": (
+                "SAT user group: actual 2019 SAT-taking graduates"
                 if route == "SAT"
-                else "modeled-median ACT composite percentile rank"
+                else first["percentile_population"]
             ),
+            "route_statistic": (
+                "mean transformed percentile of q25 and q75 total-score anchors"
+                if route == "SAT"
+                else "mean transformed percentile of q25 and q75 anchors"
+            ),
+            "sat_q25_section_sum": q25_sum,
+            "sat_q75_section_sum": q75_sum,
+            "route_q25_test_taker_percentile": anchor_percentiles[0],
+            "route_q75_test_taker_percentile": anchor_percentiles[1],
         }
         for component, slug in (
             ("reading and writing", "sat_reading_writing"),
@@ -264,8 +328,12 @@ def mixture_median(rows):
     return (lower + upper) / 2
 
 
-def national_route_percentile_rows(component_rows, sat_tables, act_table):
+def national_route_percentile_rows(
+    component_rows, sat_tables, act_table, sat_total_table=None
+):
     """Summarize the score-reporting enrolled-submitter mixtures by route."""
+    if sat_total_table is None:
+        sat_total_table = load_sat_total_user_percentiles()
     output = []
     for route in ("SAT", "ACT"):
         rows = [row for row in component_rows if row["route"] == route]
@@ -280,17 +348,23 @@ def national_route_percentile_rows(component_rows, sat_tables, act_table):
                 "raw": raw_median,
                 "percentile": interpolate(table, raw_median),
             }
+        route_center = (
+            interpolate(
+                sat_total_table,
+                sum(value["raw"] for value in component_results.values()),
+            )
+            if route == "SAT"
+            else component_results["composite"]["percentile"]
+        )
         result = {
             "route": route,
             "submitters_with_score_bars_2019": sum(
                 row["submitters_2019"]
                 for row in next(iter(grouped.values()))
             ),
-            "estimated_route_central_test_taker_percentile": sum(
-                value["percentile"] for value in component_results.values()
-            ) / len(component_results),
+            "estimated_route_central_test_taker_percentile": route_center,
             "percentile_population": (
-                "SAT user group: actual SAT scores in the past three school years"
+                "SAT user group: actual 2019 SAT-taking graduates"
                 if route == "SAT"
                 else "ACT-tested 2018 high school graduates"
             ),
@@ -312,9 +386,21 @@ def national_route_percentile_rows(component_rows, sat_tables, act_table):
     return output
 
 
-def score_table_rows(sat_tables, act_counts, act_table):
+def score_table_rows(sat_tables, sat_total_table, act_counts, act_table):
     """Make the parsed official lookups inspectable without tracking data."""
     output = []
+    for score, percentile in sorted(sat_total_table.items()):
+        output.append({
+            "route": "SAT",
+            "component": "total",
+            "score": score,
+            "test_taker_percentile": percentile,
+            "test_takers_at_score": "",
+            "source": (
+                "2019 College Board SAT User Group Percentiles; "
+                "within-label interpolation"
+            ),
+        })
     for component, table in sat_tables.items():
         for score, percentile in sorted(table.items()):
             output.append({
@@ -347,12 +433,13 @@ def main():
     evidence = ability.ability_evidence_rows(graduates, ability.load_admissions())
     components = ability.test_component_rows(evidence)
     sat_tables = load_sat_user_percentiles()
+    sat_total_table = load_sat_total_user_percentiles()
     act_counts, act_table = load_act_composite_percentiles()
     percentiles = component_percentile_rows(components, sat_tables, act_table)
-    routes = route_percentile_rows(percentiles)
+    routes = route_percentile_rows(percentiles, sat_total_table)
     pathways.write_tsv(
         pathways.DERIVED / "test_taker_score_percentiles.tsv",
-        score_table_rows(sat_tables, act_counts, act_table),
+        score_table_rows(sat_tables, sat_total_table, act_counts, act_table),
     )
     pathways.write_tsv(
         pathways.DERIVED / "freshman_test_component_percentiles.tsv", percentiles
@@ -362,7 +449,9 @@ def main():
     )
     pathways.write_tsv(
         pathways.DERIVED / "national_test_route_percentiles.tsv",
-        national_route_percentile_rows(components, sat_tables, act_table),
+        national_route_percentile_rows(
+            components, sat_tables, act_table, sat_total_table
+        ),
     )
     print(
         f"scored {len(routes):,} institution-routes on separate SAT and ACT "
