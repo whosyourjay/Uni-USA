@@ -8,6 +8,7 @@ These are the fixed source tables used by the analysis. The files are downloaded
 | `HD2023.zip` | NCES IPEDS | Fall 2023 institutional directory | <https://nces.ed.gov/ipeds/datacenter/data/HD2023.zip> |
 | `ADM2019.zip` | NCES IPEDS | Fall 2019 first-year admissions, test policy, and submitted-test summaries | <https://nces.ed.gov/ipeds/datacenter/data/ADM2019.zip> |
 | `ADM2019_Dict.zip` | NCES IPEDS | Definitions and code values for 2019 admissions considerations | <https://nces.ed.gov/ipeds/datacenter/data/ADM2019_Dict.zip> |
+| `ADM2020.zip`–`ADM2023.zip` | NCES IPEDS | Later annual SAT/ACT submission counts and score quartiles used to stabilize school ability estimates | <https://nces.ed.gov/ipeds/datacenter/data/ADM2023.zip> |
 | `ADM2017.zip`, `ADM2018.zip` | NCES IPEDS | Earlier redesigned-SAT admissions bars used only for the selective-school stability check | <https://nces.ed.gov/ipeds/datacenter/data/ADM2017.zip> |
 | `IC2019.zip` | NCES IPEDS | Fall 2019 institutional characteristics, including open-admission status | <https://nces.ed.gov/ipeds/datacenter/data/IC2019.zip> |
 | `IC2019_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/IC2019_Dict.zip> |

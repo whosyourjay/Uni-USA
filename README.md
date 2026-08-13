@@ -4,9 +4,9 @@ Ranks U.S. universities and majors by the estimated age-18 academic ability of
 their bachelor's graduates. Nothing here reflects research output or reputation.
 
 First pass: 2,356 institutions and 64,314 institution-major pairs, using 2022–23
-degrees, fall 2019 admissions data, and 2023 transfer outcomes. The current score
-is a rough test-taker percentile proxy; converting it to the full age-18 scale is
-still in progress.
+degrees, fall 2019 admission-route counts, fall 2019–2023 test-score bars, and
+2023 transfer outcomes. The current score is a rough test-taker percentile proxy;
+converting it to the full age-18 scale is still in progress.
 
 Known limitations and planned work live in `TODO.md`.
 
@@ -106,6 +106,12 @@ q25 and q75 anchors; the ACT center does the same with its composite anchors.
 Both use percentiles among actual test takers. Within each rounded SAT percentile
 label, its implied interval is divided evenly among the score buckets. SAT and
 ACT remain separate routes throughout the final mixture.
+
+`schools.tsv` records separate annual SAT and ACT centers for fall 2019–2023.
+Its `freshman_score` first averages each route across the available years, then
+gives the available SAT and ACT route means equal weight. SAT uses the matching
+annual test-taker distribution; ACT provisionally uses the same 2018 test-taker
+distribution for every year.
 
 Across institutions with complete score bars, the SAT mixture contains 846,098
 submitters and has center 72.09; the ACT mixture contains 673,599 and has center

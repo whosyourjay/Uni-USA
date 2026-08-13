@@ -16,6 +16,14 @@ import transfer
 
 ROOT = pathways.ROOT
 CIP_BROWSE = pathways.SOURCES / "CIP2020-browse.html"
+TEST_PERCENTILE_COLUMNS = tuple(
+    column
+    for year in scores.ADMISSION_YEARS
+    for column in (
+        f"sat_taker_percentile_{year}",
+        f"act_taker_percentile_{year}",
+    )
+)
 SCHOOL_COLUMNS = (
     "school",
     "ability",
@@ -23,8 +31,7 @@ SCHOOL_COLUMNS = (
     "freshman_score",
     "satnum_2019",
     "actnum_2019",
-    "sat_taker_percentile_2019",
-    "act_taker_percentile_2019",
+    *TEST_PERCENTILE_COLUMNS,
     "class_rank_percentile_2019",
     "transfer_share",
 )
@@ -93,8 +100,8 @@ def school_rows(graduates, admissions, routes, transfer_score, institution_route
         direct = bachelors - transfer_count
         share = transfer_count / bachelors
         freshman_components = [
-            (route["sat_taker_percentile_2019"], paths.get("SAT", 0)),
-            (route["act_taker_percentile_2019"], paths.get("ACT", 0)),
+            (route["sat_taker_percentile_mean_2019_2023"], paths.get("SAT", 0)),
+            (route["act_taker_percentile_mean_2019_2023"], paths.get("ACT", 0)),
             (route["freshman_score"], paths.get("Service-academy nomination", 0)),
             (97.0, paths.get("Automatic class-rank guarantee", 0)),
         ]
@@ -225,8 +232,7 @@ def major_rows(schools, titles):
             "estimated_direct_bachelors": direct,
             "estimated_transfer_bachelors": transfer,
             "transfer_share": school["transfer_share"],
-            "sat_taker_percentile_2019": school["sat_taker_percentile_2019"],
-            "act_taker_percentile_2019": school["act_taker_percentile_2019"],
+            **{column: school[column] for column in TEST_PERCENTILE_COLUMNS},
             "class_rank_percentile_2019": school[
                 "class_rank_percentile_2019"
             ],

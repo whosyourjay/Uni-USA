@@ -202,6 +202,25 @@ def interpolate(table, value):
     return table[lower] + fraction * (table[upper] - table[lower])
 
 
+def admission_route_centers(admission, year, act_table=None, sat_table=None):
+    """Convert one IPEDS admissions row into separate SAT and ACT centers."""
+    if act_table is None:
+        _, act_table = load_act_composite_percentiles()
+    output = {}
+    sat_values = [pathways.number(admission.get(field)) for field in ability.SAT_FIELDS]
+    if all(sat_values) and pathways.number(admission.get("SATNUM")) > 0:
+        if sat_table is None:
+            sat_table = load_sat_total_user_percentiles(year)
+        output["SAT"] = sum((
+            interpolate(sat_table, sat_values[0] + sat_values[2]),
+            interpolate(sat_table, sat_values[1] + sat_values[3]),
+        )) / 2
+    act_values = [pathways.number(admission.get(field)) for field in ability.ACT_FIELDS]
+    if all(act_values) and pathways.number(admission.get("ACTNUM")) > 0:
+        output["ACT"] = sum(interpolate(act_table, value) for value in act_values) / 2
+    return output
+
+
 def component_percentile_rows(component_rows, sat_tables=None, act_table=None):
     """Attach test-taker q25, modeled median, and q75 percentiles."""
     if sat_tables is None:

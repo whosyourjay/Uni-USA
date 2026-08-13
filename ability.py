@@ -62,10 +62,10 @@ def present(row, fields):
     return all(pathways.number(row.get(field)) > 0 for field in fields)
 
 
-def load_admissions():
+def load_admissions(year=ADMISSION_YEAR):
     return {
         pathways.number(row["UNITID"]): row
-        for row in pathways.zip_rows("ADM2019.zip")
+        for row in pathways.zip_rows(f"ADM{year}.zip")
     }
 
 

@@ -23,6 +23,22 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/ADM2019_Dict.zip",
         "c21b76d466305e7fb4fe82fd3403cd247c607a3558de3ef7fc66d457a396137c",
     ),
+    "ADM2020.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2020.zip",
+        "0cae5b25c7b973d4ad428a5442888a80968b2980201220cdcb1e9dab1162f696",
+    ),
+    "ADM2021.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2021.zip",
+        "786b1343a2e407fc102cfbda11f1517456917bac221b1dca9232b60ee453db7e",
+    ),
+    "ADM2022.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2022.zip",
+        "31cbfa5e68289525bff60e65b1094c610473ecc02d601461ae3875f854e2fde7",
+    ),
+    "ADM2023.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2023.zip",
+        "670ecc7c4313f044dcdf740a42ef10c6d2927eb9f890fb405e3569c8442aca27",
+    ),
     "ADM2017.zip": (
         "https://nces.ed.gov/ipeds/datacenter/data/ADM2017.zip",
         "3e92d1853aca4363ce89abeba8b0ef0237a6bc7b4a07b436d5ae5f38b61ac649",
