@@ -109,6 +109,24 @@ class AbilityEvidenceTests(unittest.TestCase):
             317,
         )
 
+    def test_open_admission_endpoint_exposure(self):
+        row = ability.open_admission_endpoint_rows(
+            self.graduates,
+            ability.load_characteristics(),
+            ability.load_fall_enrollment(),
+        )[0]
+        self.assertEqual(row["institutions"], 545)
+        self.assertEqual(row["fall_first_time_entrants_2019"], 339_523)
+        self.assertEqual(row["domestic_bachelors_2023"], 170_220)
+        self.assertAlmostEqual(row["share_domestic_bachelors_2023"], 0.089705477)
+        self.assertAlmostEqual(
+            row["estimated_direct_bachelors_2023"], 36_611.202, places=3
+        )
+        self.assertAlmostEqual(
+            row["estimated_transfer_bachelors_2023"], 131_025.798, places=3
+        )
+        self.assertAlmostEqual(row["bachelors_without_route_split_2023"], 2_583)
+
     def test_admission_considerations(self):
         rows = ability.consideration_rows(self.graduates, self.admissions)
         by_basis = {row["basis"]: row for row in rows}
@@ -144,13 +162,17 @@ class AbilityEvidenceTests(unittest.TestCase):
             ability.load_fall_enrollment(),
         )
         academies = next(
-            row for row in rows if row["route"] == "Service-academy nomination"
+            row for row in rows if row["item"] == "Service-academy nomination"
         )
         self.assertEqual(academies["numerator"], 3_696)
         self.assertEqual(academies["denominator"], 1_944_624)
-        early = next(row for row in rows if row["route"] == "Early action")
+        early = next(row for row in rows if row["item"] == "Early action")
         self.assertEqual((early["numerator"], early["denominator"]), (935, 1_950))
-        athletics = [row for row in rows if row["route"] == "Recruited athletics"]
+        self.assertEqual(early["classification"], "application-round overlay")
+        athletics = [row for row in rows if row["item"] == "Recruited athletics"]
+        self.assertTrue(all(
+            row["classification"] == "selection route" for row in athletics
+        ))
         self.assertEqual({row["measure"] for row in athletics}, {
             "share of admitted students",
             "admit rate among committee-reviewed athlete cases",

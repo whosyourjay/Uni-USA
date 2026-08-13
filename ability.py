@@ -263,8 +263,13 @@ def admission_path_rows(graduates, admissions, characteristics, enrollment):
         "institutions": len(open_unitids),
         "fall_first_time_entrants_2019": open_people,
         "share_all_first_time_entrants": open_people / all_first_time,
-        "ability_evidence": "No selective cutoff; estimate the entrant distribution from origin populations",
-        "source": "IPEDS IC2019 open-admission status and EF2019A enrollment",
+        "ability_evidence": (
+            "No institution-level selection cutoff; transcripts or tests may be "
+            "used for placement or selective-program entry"
+        ),
+        "source": (
+            "IPEDS IC2019 open-admission definition/status and EF2019A enrollment"
+        ),
     })
 
     difference = all_first_time - accounted
@@ -302,6 +307,55 @@ def consideration_rows(graduates, admissions):
             )
         output.append(result)
     return output
+
+
+def open_admission_endpoint_rows(graduates, characteristics, enrollment):
+    """Measure how much of the final endpoint depends on open-admission entry.
+
+    The graduate split is the institution's Outcome Measures route share applied
+    to current domestic bachelor's awards, as in pathways.py.  It prevents the
+    much larger open-admission entrant count from being mistaken for unresolved
+    mass in the final bachelor distribution.
+    """
+    open_rows = [
+        row for row in graduates
+        if pathways.number(
+            characteristics.get(row["unitid"], {}).get("OPENADMP")
+        ) == 1
+    ]
+    split_rows = [
+        row for row in open_rows
+        if row["transfer_share_bachelors_8yr"] != ""
+    ]
+    national_bachelors = sum(row["bachelors_domestic"] for row in graduates)
+    open_bachelors = sum(row["bachelors_domestic"] for row in open_rows)
+    direct = sum(
+        row["bachelors_domestic"] * (1 - row["transfer_share_bachelors_8yr"])
+        for row in split_rows
+    )
+    transfer = sum(
+        row["bachelors_domestic"] * row["transfer_share_bachelors_8yr"]
+        for row in split_rows
+    )
+    return [{
+        "path": "Open admission",
+        "institutions": len(open_rows),
+        "fall_first_time_entrants_2019": sum(
+            enrollment.get(row["unitid"], {}).get("all", 0)
+            for row in open_rows
+        ),
+        "domestic_bachelors_2023": open_bachelors,
+        "share_domestic_bachelors_2023": open_bachelors / national_bachelors,
+        "estimated_direct_bachelors_2023": direct,
+        "share_national_bachelors_direct_open": direct / national_bachelors,
+        "estimated_transfer_bachelors_2023": transfer,
+        "share_national_bachelors_transfer_open": transfer / national_bachelors,
+        "bachelors_without_route_split_2023": open_bachelors - direct - transfer,
+        "temporary_model_treatment": (
+            "leave direct component unscored; model transfer component from its "
+            "origin mixture"
+        ),
+    }]
 
 
 def interval_cdf(value, lower, upper):
@@ -422,9 +476,8 @@ def main():
     admissions = load_admissions()
     enrollment = load_fall_enrollment()
     rows = ability_evidence_rows(graduates, admissions)
-    paths = admission_path_rows(
-        graduates, admissions, load_characteristics(), enrollment
-    )
+    characteristics = load_characteristics()
+    paths = admission_path_rows(graduates, admissions, characteristics, enrollment)
     all_first_time = sum(row["fall_first_time_entrants_2019"] for row in paths)
     pathways.write_tsv(DERIVED / "institution_ability_evidence.tsv", rows)
     pathways.write_tsv(
@@ -433,6 +486,10 @@ def main():
     pathways.write_tsv(DERIVED / "national_test_routes.tsv",
                        national_test_route_rows(rows, all_first_time))
     pathways.write_tsv(DERIVED / "freshman_admission_paths.tsv", paths)
+    pathways.write_tsv(
+        DERIVED / "open_admission_endpoint.tsv",
+        open_admission_endpoint_rows(graduates, characteristics, enrollment),
+    )
     pathways.write_tsv(DERIVED / "freshman_admission_considerations.tsv",
                        consideration_rows(graduates, admissions))
     component_rows = test_component_rows(rows)

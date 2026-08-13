@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quantify named freshman routes that the IPEDS test table does not identify.
+"""Quantify selection routes and overlays that IPEDS test fields do not identify.
 
 The rows deliberately retain unlike denominators.  A national entrant count, a
 single-school share of admits, and a route admit rate are useful scale checks,
@@ -59,7 +59,8 @@ def benchmark_rows(graduates, admissions, enrollment):
 
     return [
         {
-            "route": "Service-academy nomination",
+            "item": "Service-academy nomination",
+            "classification": "selection route",
             "benchmark": "Four nomination-based federal service academies",
             "cohort": "fall 2019",
             "numerator": academy_domestic,
@@ -75,7 +76,8 @@ def benchmark_rows(graduates, admissions, enrollment):
             "source": f"IPEDS EF2019A; {ACADEMY_SOURCE}",
         },
         {
-            "route": "Audition or portfolio",
+            "item": "Audition or portfolio",
+            "classification": "selection route",
             "benchmark": "Institutions reporting formal competency/portfolio required",
             "cohort": "fall 2019",
             "numerator": portfolio_exposure,
@@ -91,7 +93,8 @@ def benchmark_rows(graduates, admissions, enrollment):
             "source": "IPEDS ADM2019 formal competencies/portfolio consideration",
         },
         {
-            "route": "Early action",
+            "item": "Early action",
+            "classification": "application-round overlay",
             "benchmark": "Harvard Class of 2023",
             "cohort": "2018-19 admissions",
             "numerator": 935,
@@ -107,7 +110,8 @@ def benchmark_rows(graduates, admissions, enrollment):
             "source": f"{HARVARD_EARLY_SOURCE}; {HARVARD_TOTAL_SOURCE}",
         },
         {
-            "route": "Recruited athletics",
+            "item": "Recruited athletics",
+            "classification": "selection route",
             "benchmark": "Harvard domestic applicants, six cycles",
             "cohort": "classes entering 2014-19",
             "numerator": "",
@@ -119,11 +123,12 @@ def benchmark_rows(graduates, admissions, enrollment):
                 "rather than inheriting the institution-wide bar"
             ),
             "national_route_count": "no",
-            "additive": "no: overlaps test and early routes",
+            "additive": "no: overlaps test-evidence routes and application rounds",
             "source": HARVARD_PREFERENCE_SOURCE,
         },
         {
-            "route": "Recruited athletics",
+            "item": "Recruited athletics",
+            "classification": "selection route",
             "benchmark": "UCLA athlete committee",
             "cohort": "2017-18 through 2019-20",
             "numerator": "",
@@ -139,7 +144,8 @@ def benchmark_rows(graduates, admissions, enrollment):
             "source": UC_AUDIT_SOURCE,
         },
         {
-            "route": "Legacy preference",
+            "item": "Legacy preference",
+            "classification": "preference overlay",
             "benchmark": "Harvard domestic applicants, six cycles",
             "cohort": "classes entering 2014-19",
             "numerator": "",
@@ -152,7 +158,8 @@ def benchmark_rows(graduates, admissions, enrollment):
             "source": HARVARD_PREFERENCE_SOURCE,
         },
         {
-            "route": "Guaranteed rank admission",
+            "item": "Guaranteed rank admission",
+            "classification": "selection route",
             "benchmark": "University of Texas at Austin",
             "cohort": "summer/fall 2019",
             "numerator": "",
@@ -180,8 +187,8 @@ def main():
     rows = benchmark_rows(
         graduates, ability.load_admissions(), ability.load_fall_enrollment()
     )
-    pathways.write_tsv(pathways.DERIVED / "special_route_benchmarks.tsv", rows)
-    print(f"wrote {len(rows)} special-route benchmarks")
+    pathways.write_tsv(pathways.DERIVED / "admission_benchmarks.tsv", rows)
+    print(f"wrote {len(rows)} admission-route and overlay benchmarks")
 
 
 if __name__ == "__main__":
