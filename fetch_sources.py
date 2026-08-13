@@ -63,6 +63,16 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/OM2023_Dict.zip",
         "97009ef1706981902925a589b0804e20ce78a63489471093f463b3e99ca03852",
     ),
+    "SAT-national-percentiles.html": (
+        "https://research.collegeboard.org/reports/sat-suite/"
+        "understanding-scores/sat",
+        "c88392bdaf865dac481a0c195e7339d645d177dc1f46462ef856d29305a18eea",
+    ),
+    "2018-act-national-profile.pdf": (
+        "https://www.act.org/content/dam/act/unsecured/documents/cccr2018/"
+        "P_99_999999_N_S_N00_ACT-GCPR_National.pdf",
+        "a8e819602d03be5897358456644aefbffd22207a138c67f8f0560573fa9fb3f2",
+    ),
 }
 
 

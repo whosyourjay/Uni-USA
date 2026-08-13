@@ -385,22 +385,6 @@ def interquartile_cdf(value, scale_min, q25, q75, scale_max):
     )
 
 
-def pool_cdf(rows, value):
-    total = sum(row["submitters_2019"] for row in rows)
-    if total == 0:
-        raise ValueError("Empty test-route pool")
-    return sum(
-        row["submitters_2019"] * interquartile_cdf(
-            value,
-            row["score_scale_min"],
-            row["score_q25_2019"],
-            row["score_q75_2019"],
-            row["score_scale_max"],
-        )
-        for row in rows
-    ) / total
-
-
 def test_component_rows(evidence):
     """Build route-specific distributions without merging SAT and ACT."""
     output = []
@@ -428,18 +412,7 @@ def test_component_rows(evidence):
                 "score_scale_max": scale_max,
             })
 
-    pools = {}
-    for route, component, *_ in TEST_COMPONENTS:
-        pools[(route, component)] = [
-            row for row in output
-            if row["route"] == route and row["component"] == component
-        ]
     for row in output:
-        pool = pools[(row["route"], row["component"])]
-        for q in (25, 75):
-            row[f"route_pool_percentile_q{q}"] = 100 * pool_cdf(
-                pool, row[f"score_q{q}_2019"]
-            )
         row["distribution"] = "25%, 50%, 25% uniform mass across quartile intervals"
     return output
 

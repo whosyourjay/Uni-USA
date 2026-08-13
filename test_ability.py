@@ -1,5 +1,6 @@
-"""Regression checks for the fall-2019 freshman ability evidence."""
+"""End-to-end regressions and property fuzzing for freshman ability evidence."""
 
+import random
 import unittest
 
 import ability
@@ -8,7 +9,7 @@ import pathways
 import special_routes
 
 
-class AbilityEvidenceTests(unittest.TestCase):
+class AbilityEvidenceRegressionAndFuzzTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.graduates = pathways.graduate_rows(
@@ -137,12 +138,29 @@ class AbilityEvidenceTests(unittest.TestCase):
         self.assertEqual(by_basis["Admission tests"]["required_enrolled"],
                          1_291_303)
 
-    def test_interquartile_distribution(self):
-        self.assertEqual(ability.interquartile_cdf(200, 200, 400, 600, 800), 0)
-        self.assertEqual(ability.interquartile_cdf(400, 200, 400, 600, 800), 0.25)
-        self.assertEqual(ability.interquartile_cdf(500, 200, 400, 600, 800), 0.50)
-        self.assertEqual(ability.interquartile_cdf(600, 200, 400, 600, 800), 0.75)
-        self.assertEqual(ability.interquartile_cdf(800, 200, 400, 600, 800), 1)
+    def test_interquartile_distribution_fuzz(self):
+        generator = random.Random(20_190_823)
+        for _ in range(1_000):
+            scale_min = generator.uniform(-1_000, 1_000)
+            q25 = scale_min + generator.uniform(0.01, 1_000)
+            q75 = q25 + generator.uniform(0.01, 1_000)
+            scale_max = q75 + generator.uniform(0.01, 1_000)
+            anchors = (scale_min, q25, q75, scale_max)
+            self.assertAlmostEqual(ability.interquartile_cdf(
+                scale_min, *anchors
+            ), 0)
+            self.assertAlmostEqual(ability.interquartile_cdf(q25, *anchors), 0.25)
+            self.assertAlmostEqual(ability.interquartile_cdf(q75, *anchors), 0.75)
+            self.assertAlmostEqual(ability.interquartile_cdf(
+                scale_max, *anchors
+            ), 1)
+            samples = sorted(
+                generator.uniform(scale_min, scale_max) for _ in range(20)
+            )
+            values = [
+                ability.interquartile_cdf(value, *anchors) for value in samples
+            ]
+            self.assertEqual(values, sorted(values))
 
     def test_test_component_distributions(self):
         rows = ability.test_component_rows(self.rows)
@@ -156,34 +174,50 @@ class AbilityEvidenceTests(unittest.TestCase):
         self.assertEqual({row["component"] for row in harvard_sat},
                          {"reading and writing", "math"})
 
-    def test_sat_act_common_component_keeps_route_disagreement(self):
+    def test_harvard_test_route_percentile_regression(self):
         components = ability.test_component_rows(self.rows)
-        fit = calibrate_tests.fit_component(components)
-        self.assertEqual(
-            set(fit["parameters"]),
-            {"SAT reading/writing", "SAT math", "ACT composite"},
-        )
-        self.assertTrue(all(
-            parameter["slope"] > 0 for parameter in fit["parameters"].values()
-        ))
-        routes = calibrate_tests.route_rows(components, fit)
-        self.assertTrue(all(
-            row["common_component_q25"] <= row["common_component_q75"]
-            for row in routes
-        ))
+        percentiles = calibrate_tests.component_percentile_rows(components)
+        routes = calibrate_tests.route_percentile_rows(percentiles)
         harvard = {
             row["route"]: row
             for row in routes if row["institution"] == "Harvard University"
         }
         self.assertEqual(set(harvard), {"SAT", "ACT"})
-        self.assertLess(
-            harvard["SAT"]["common_component_q25"],
-            harvard["SAT"]["common_component_q75"],
-        )
-        self.assertNotEqual(harvard["SAT"]["act_minus_sat_q25"], "")
         self.assertEqual(
-            harvard["SAT"]["act_minus_sat_q25"],
-            harvard["ACT"]["act_minus_sat_q25"],
+            harvard["SAT"]["sat_reading_writing_estimated_median_score"], 740
+        )
+        self.assertEqual(harvard["SAT"]["sat_math_estimated_median_score"], 775)
+        self.assertAlmostEqual(
+            harvard["SAT"]["estimated_route_central_test_taker_percentile"],
+            97.25,
+        )
+        self.assertEqual(
+            harvard["ACT"]["act_composite_estimated_median_score"], 34
+        )
+        self.assertAlmostEqual(
+            harvard["ACT"]["estimated_route_central_test_taker_percentile"],
+            99.0250243234732,
+        )
+
+    def test_national_test_route_mixture_medians(self):
+        components = ability.test_component_rows(self.rows)
+        sat = calibrate_tests.load_sat_user_percentiles()
+        _, act = calibrate_tests.load_act_composite_percentiles()
+        routes = {
+            row["route"]: row
+            for row in calibrate_tests.national_route_percentile_rows(
+                components, sat, act
+            )
+        }
+        self.assertEqual(routes["SAT"]["submitters_with_score_bars_2019"], 846_098)
+        self.assertEqual(routes["ACT"]["submitters_with_score_bars_2019"], 673_599)
+        self.assertAlmostEqual(
+            routes["SAT"]["estimated_route_central_test_taker_percentile"],
+            71.59202558514983,
+        )
+        self.assertAlmostEqual(
+            routes["ACT"]["estimated_route_central_test_taker_percentile"],
+            76.2591727817543,
         )
 
     def test_special_route_benchmarks_keep_denominators(self):

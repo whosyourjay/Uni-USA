@@ -158,7 +158,7 @@ def benchmark_rows(graduates, admissions, enrollment):
             "source": HARVARD_PREFERENCE_SOURCE,
         },
         {
-            "item": "Guaranteed rank admission",
+            "item": "Automatic admission by high-school class rank",
             "classification": "selection route",
             "benchmark": "University of Texas at Austin",
             "cohort": "summer/fall 2019",
