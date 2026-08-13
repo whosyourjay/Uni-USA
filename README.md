@@ -1,83 +1,75 @@
-# U.S. undergraduate ability distributions
+# U.S. bachelor-graduate ability
 
-The eventual goal is to estimate the distribution of pre-college ability conditional on the bachelor's degree a person obtained. The denominator is **every U.S. resident at age 18**, including people who never attend college. This first stage quantifies how students arrive at four-year institutions; it does not yet estimate ability.
+The goal is to estimate the distribution of academic ability at age 18 conditional on the bachelor's degree a person eventually receives:
 
-## Pathway model
+`ability | final bachelor's institution`
 
-U.S. admission categories overlap, so one additive list of “admission types” would double-count people. We use three separate dimensions.
+The denominator is every U.S. resident at age 18, including people who never attend college. The unit being ranked is the **final degree institution**, not the institution of first admission.
 
-1. **Entry route**, a partition of new arrivals at a four-year institution:
-   - first-time undergraduate;
-   - transfer-in undergraduate.
-2. **Application plan**, a partition within first-year admission when institutions disclose it:
-   - binding early decision;
-   - nonbinding early action or restrictive early action;
-   - regular or rolling admission.
-3. **Selection flags**, which overlap and therefore cannot be added:
-   - ordinary holistic review;
-   - recruited athlete;
-   - legacy, development, or faculty-child preference;
-   - statutory or guaranteed admission;
-   - access programs such as QuestBridge;
-   - audition, portfolio, or program-specific review.
+## Population and weights
 
-IPEDS measures the first dimension comprehensively. Common Data Sets can measure binding early-decision admits at many schools, but not a clean EA/RD partition. Institutions almost never publish mutually exclusive counts for the third dimension: for example, a recruited athlete can also be a legacy and an early applicant.
-
-## National calibration
-
-The source period is fall 2023 through June 2024. “Domestic” means the IPEDS total less nonresident aliens; it does not mean U.S. citizen only.
+The institution universe comes from actual 2022–23 IPEDS bachelor's completions. It does not start with a sector, ranking, or “four-year college” filter.
 
 | Quantity | Count/share |
 |---|---:|
 | U.S. resident population age 18, July 1, 2023 | 4,357,485 |
-| First-time entrants at four-year degree-granting institutions | 2,353,982 |
-| First-time entrants, less nonresident aliens | 2,262,366 |
-| Preliminary first-time flow / age-18 population | 51.92% |
-| **Preliminary bottom constant** | **48.08 percentile points** |
-| Transfer entrants at four-year institutions | 1,615,553 |
-| Transfer entrants, less nonresident aliens | 1,574,419 |
-| Transfer share of domestic new arrivals | 41.03% |
+| Bachelor's degrees, all citizenships | 1,985,289 |
+| Bachelor's degrees, less nonresident aliens | 1,897,543 |
+| Domestic bachelor flow / age-18 population | 43.55% |
+| **Preliminary no-bachelor constant** | **56.45 percentile points** |
+| Institutions awarding at least one bachelor's | 2,445 |
+| Institutions awarding at least one domestic bachelor's | 2,356 |
 
-The 48.08-point constant implements the proposed shortcut: first compute percentiles among domestic first-time four-year entrants, then place that distribution above residents who do not enter a four-year institution. It is only a **flow-to-cohort approximation**. The IPEDS numerator contains first-time students of every age, while the Census denominator is one exact age. Later work should estimate an age correction and separate delayed entry from permanent non-entry.
+The 56.45-point constant is the final-degree analogue of the cohort rescaling in the Taiwan, Vietnam, and Thailand projects. If a within-graduate ability percentile is `p`, its first cohort-scale approximation is
 
-Transfers are not an adjustment at the margin. The annual flow into four-year institutions is 1.57 million domestic transfer students, compared with 2.26 million domestic first-time students. Because the target is the *final bachelor's institution*, the full model must retain both institutions:
+`56.45 + 0.4355 p`.
 
-`pre-college ability → initial institution → transfer selection → degree institution`
+This is a flow-to-cohort approximation. The numerator is degrees awarded during one year, not unique members of the current age-18 cohort: graduates are older, a person can receive more than one bachelor's, and some people complete much later. “Domestic” means the IPEDS total less nonresident aliens. These are the next corrections to estimate; they are explicit rather than hidden in the ranking.
 
-Continuing students are excluded from new-entry counts. Students who earned college credit while still in high school remain first-time students under the IPEDS definition.
+Almost every actual bachelor's award comes from an institution IPEDS classifies as four-or-more-year: only one domestic award in this file falls outside that classification. That is an empirical result of using final degrees, not a filter. Low-prestige, open-admission, online, specialized, and transfer-serving universities remain in the 2,356-institution table.
 
-## Entry route by freshman selectivity
+## Pathways to the final institution
 
-The admission-rate bands use 2023 IPEDS first-year applications and admissions. They are descriptive, not an ability ordering: applicant self-selection, multiple applications, open admission, specialized schools, and test-optional policies all matter.
+A transfer is an event, so annual first-time and transfer-in counts cannot be added nationally: the same person may first enter one institution and later enter another. IPEDS Outcome Measures provides the useful partition. It follows all degree-seeking students who entered an institution in 2015–16 and records the highest degree they earned **at that institution** by 2023.
 
-| First-year admit rate | Institutions | Domestic first-time | Share of age 18 | Domestic transfer | Transfer share of new arrivals |
-|---|---:|---:|---:|---:|---:|
-| 0–10% | 35 | 41,986 | 0.96% | 10,004 | 19.24% |
-| 10–20% | 45 | 60,184 | 1.38% | 13,201 | 17.99% |
-| 20–50% | 202 | 226,137 | 5.19% | 111,836 | 33.09% |
-| Over 50% | 1,447 | 1,370,250 | 31.45% | 802,337 | 36.93% |
-| Not reported or open | 703 | 563,809 | 12.94% | 637,041 | 53.05% |
+| Route into final institution | Bachelor's graduates in the cohort | Share |
+|---|---:|---:|
+| First-time at that institution | 1,065,088 | 57.78% |
+| Prior postsecondary experience before entering it | 778,249 | 42.22% |
 
-The ≤10% aggregate hides two different systems. UCLA, Columbia, and Northeastern alone account for 6,092 of the band’s 10,004 domestic transfer entrants. Across the other ≤10% institutions reporting at least 500 first-year applications, transfers are 8.50% of new domestic arrivals. Thus freshman scores may be a tolerable first approximation at many elite private schools, but not at transfer-heavy public flagships or a few structurally unusual private universities.
+The second row is the transfer component in the model. IPEDS calls it “non-first-time entering”; transfer credit is not required. Institutions with a usable route estimate account for 99.79% of current domestic bachelor's awards.
 
-The raw institution table is [`derived/institution_pathways.tsv`](derived/institution_pathways.tsv); [`derived/ultraselective_pathways.tsv`](derived/ultraselective_pathways.tsv) is the complete ≤10% subset. The cutoff is deliberately mechanical. It retains conservatories and anomalous tiny application counts rather than silently redefining “top.”
+The route mixture varies too much to substitute a national constant. Among the 2015–16 entering cohorts who earned a bachelor's there within eight years, the transfer share is 0.24% at Harvard, 0.83% at Stanford, 29.85% at Berkeley, 35.63% at UCLA, 35.04% at Columbia, and 91.11% at the University of Phoenix-Arizona. These are pathway shares, not ability estimates.
 
-## Comparison with the other country projects
+[`derived/institution_graduates.tsv`](derived/institution_graduates.tsv) contains the same calculation for every final institution. Its core columns are:
 
-The Gaokao, Taiwan, Vietnam, and Thailand repositories mainly measure initial placement. University-to-university transfer exists in Taiwan and Vietnam but is peripheral to the national admission mechanism; changing universities after Gaokao placement is especially rare. Thailand's TCAS rounds also describe initial entry, although its larger measurement problem is that most seats use judgment-based criteria that are not comparable across programs.
+- `bachelors_domestic`: the institution's additive weight in the final ranking;
+- `direct_bachelors_8yr` and `transfer_bachelors_8yr`: people, from the 2015–16 entering cohort, receiving a bachelor's there by 2023;
+- `transfer_share_bachelors_8yr`: the mixture weight for the transfer ability component;
+- direct and transfer eight-year bachelor completion rates;
+- current entry counts, retained as diagnostics but not used as graduate weights.
 
-The U.S. is different because community-college-to-university transfer is a mass route. An ability distribution attached to the degree institution therefore cannot simply reuse that institution's freshman SAT/ACT distribution.
+The cohort pathway counts and the current annual degree counts are different vintages and must not be added. Only the route *share* is carried to the current graduate weight.
 
-## What can be measured next
+## Ability model
 
-- **First-time entry:** IPEDS supplies applications, admissions, enrolled counts, and SAT/ACT quartiles among score submitters. Test-optional selection means the score distributions need a missing-data model.
-- **Binding early decision:** the Common Data Set reports ED applications and admits at participating schools. Since ED is binding, ED admits approximate ED entrants, subject to released commitments and nonmatriculation. EA entrant counts are not standardized.
-- **Transfers:** IPEDS supplies transfer-in counts but not origin institutions. A transition model will need longitudinal student data or state/university transfer reports, plus transfer GPA and prior-test anchors where available.
-- **Special preferences:** use them as overlapping likelihood shifts or school-specific mixtures only when a court record, statute, or institution publishes a real count. They cannot form national additive pathways.
+For institution `y`, the target distribution is
+
+`F_y(a) = (1 - t_y) F_direct,y(a) + t_y F_transfer,y(a)`,
+
+where `t_y` is the graduate transfer share above. The national distribution then weights `F_y` by the institution's domestic bachelor's count.
+
+The evidence has to follow that equation:
+
+1. **Direct graduates.** Use the institution's SAT/ACT distribution for the entry cohorts that produced the graduates, not 2023 test-optional admissions. Convert test scores onto an all-age-18 scale, then correct entrants to graduates using first-time completion selection.
+2. **Transfer graduates.** A final institution's freshman scores do not describe this group. Use a national longitudinal bachelor-recipient sample to estimate pre-college ability differences between direct and transfer graduates by destination type, then apply institution-specific transfer shares. Transfer-dominant institutions without a meaningful freshman intake will necessarily have wider uncertainty.
+3. **Missing tests.** SAT/ACT submitters are selected even before test-optional admission. Submission rates and the joint SAT/ACT national distributions must enter the model; unreported students cannot simply receive the reported median.
+
+The next source should therefore be one longitudinal source chosen for this exact bridge—Baccalaureate and Beyond or Beginning Postsecondary Students—not a collection of school anecdotes. Institution admissions data then locate named universities within the resulting route-specific scale.
 
 ## Reproduction
 
-The checked-in source bundle contains only five complete official files: one Census population table, the IPEDS directory, admissions, 12-month enrollment, and its dictionary. URLs and coverage are in [`sources/README.md`](sources/README.md).
+Downloaded inputs and generated tables stay local and are ignored by Git. [`sources/README.md`](sources/README.md) lists the nine complete Census/IPEDS files and their official URLs; `fetch_sources.py` pins every SHA-256 digest.
 
 ```sh
 python3 fetch_sources.py
@@ -85,9 +77,8 @@ python3 pathways.py
 python3 -m unittest -v
 ```
 
-Generated tables:
+Primary generated tables:
 
-- `derived/national_pathways.tsv`
-- `derived/selectivity_pathways.tsv`
-- `derived/institution_pathways.tsv`
-- `derived/ultraselective_pathways.tsv`
+- `derived/national_graduates.tsv`
+- `derived/institution_graduates.tsv`
+- `derived/graduate_pathways_by_level.tsv`

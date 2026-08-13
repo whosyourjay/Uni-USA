@@ -1,6 +1,6 @@
 # Source bundle
 
-These are the complete official tables used by `pathways.py`, not a scraped sample.
+These are the complete official tables used by `pathways.py`, not a scraped sample. The files are downloaded locally and ignored by Git; only this manifest is tracked.
 
 | File | Publisher | Coverage | URL |
 |---|---|---|---|
@@ -9,5 +9,9 @@ These are the complete official tables used by `pathways.py`, not a scraped samp
 | `ADM2023.zip` | NCES IPEDS | Fall 2023 first-year admissions and submitted-test summaries | <https://nces.ed.gov/ipeds/datacenter/data/ADM2023.zip> |
 | `EFFY2024.zip` | NCES IPEDS | Unduplicated enrollment from July 1, 2023 through June 30, 2024 | <https://nces.ed.gov/ipeds/datacenter/data/EFFY2024.zip> |
 | `EFFY2024_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/EFFY2024_Dict.zip> |
+| `C2023_A.zip` | NCES IPEDS | 2022–23 completions by institution, award level, field, residency, race, and sex | <https://nces.ed.gov/ipeds/datacenter/data/C2023_A.zip> |
+| `C2023_A_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/C2023_A_Dict.zip> |
+| `OM2023.zip` | NCES IPEDS | Eight-year outcomes for the 2015–16 entering cohort, split by first-time status | <https://nces.ed.gov/ipeds/datacenter/data/OM2023.zip> |
+| `OM2023_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/OM2023_Dict.zip> |
 
-Run `python3 fetch_sources.py` to verify the checked-in copies or restore them. The downloader pins the SHA-256 digest of every input.
+Run `python3 fetch_sources.py` to verify or restore the local copies. The downloader pins the SHA-256 digest of every input.

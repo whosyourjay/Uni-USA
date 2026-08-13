@@ -27,6 +27,22 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/EFFY2024_Dict.zip",
         "bf199f8d452ea53c02f0365489aeb7c99eaf51cf5774d6cb5306467ba8e1f981",
     ),
+    "C2023_A.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/C2023_A.zip",
+        "651d95b6405bb86c6c14884ed54225a27492199d21d8acd63cda2581aa60838a",
+    ),
+    "C2023_A_Dict.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/C2023_A_Dict.zip",
+        "2738d0a2675f475e1c2bc92a63e7cea92b3caf5210d80f19eaf6a5523919f2e2",
+    ),
+    "OM2023.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/OM2023.zip",
+        "60a619776e8da60542c9a728b2c2122bcdef6825c76b5b36a40ab243a5d0b504",
+    ),
+    "OM2023_Dict.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/OM2023_Dict.zip",
+        "97009ef1706981902925a589b0804e20ce78a63489471093f463b3e99ca03852",
+    ),
 }
 
 

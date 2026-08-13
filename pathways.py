@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quantify first-time and transfer entry into U.S. four-year institutions."""
+"""Build final-bachelor institution weights and graduate pathway mixtures."""
 
 import csv
 import io
@@ -10,9 +10,11 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 SOURCES = ROOT / "sources"
 DERIVED = ROOT / "derived"
-LEVELS = {4: "first_time", 19: "transfer", 20: "continuing"}
-BANDS = ["0-10%", "10-20%", "20-50%", ">50%", "not reported/open"]
-CONTROL = {1: "public", 2: "private nonprofit", 3: "private for-profit"}
+ENTRY_LEVELS = {4: "first_time", 19: "transfer"}
+OM_COHORTS = {10: "direct_full_time", 20: "direct_part_time",
+              30: "transfer_full_time", 40: "transfer_part_time"}
+LEVEL_NAMES = {1: "four-or-more-year", 2: "two-to-four-year", 3: "under-two-year"}
+CONTROL_NAMES = {1: "public", 2: "private nonprofit", 3: "private for-profit"}
 
 
 def number(value):
@@ -20,12 +22,15 @@ def number(value):
     return int(value) if value not in {"", "."} else 0
 
 
-def zip_rows(filename):
+def zip_rows(filename, member=None):
     with zipfile.ZipFile(SOURCES / filename) as archive:
-        names = [name for name in archive.namelist() if name.lower().endswith(".csv")]
-        if len(names) != 1:
-            raise ValueError(f"Expected one CSV in {filename}, found {names}")
-        with archive.open(names[0]) as raw:
+        if member is None:
+            names = [name for name in archive.namelist()
+                     if name.lower().endswith(".csv") and "_rv." not in name.lower()]
+            if len(names) != 1:
+                raise ValueError(f"Expected one primary CSV in {filename}: {names}")
+            member = names[0]
+        with archive.open(member) as raw:
             text = io.TextIOWrapper(raw, encoding="utf-8-sig", newline="")
             yield from csv.DictReader(text)
 
@@ -40,118 +45,134 @@ def load_population():
 
 
 def load_directory():
-    institutions = {}
-    for row in zip_rows("HD2023.zip"):
-        if number(row["ICLEVEL"]) == 1 and number(row["DEGGRANT"]) == 1:
-            institutions[number(row["UNITID"])] = row
-    return institutions
+    return {number(row["UNITID"]): row for row in zip_rows("HD2023.zip")}
 
 
-def load_admissions():
-    return {number(row["UNITID"]): row for row in zip_rows("ADM2023.zip")}
+def load_completions():
+    completions = {}
+    for row in zip_rows("C2023_A.zip"):
+        if (row["CIPCODE"].strip() == "99" and number(row["MAJORNUM"]) == 1
+                and number(row["AWLEVEL"]) == 5):
+            unitid = number(row["UNITID"])
+            if unitid in completions:
+                raise ValueError(f"Duplicate bachelor's total for {unitid}")
+            total = number(row["CTOTALT"])
+            completions[unitid] = {
+                "bachelors_all": total,
+                "bachelors_domestic": total - number(row["CNRALT"]),
+            }
+    return completions
+
+
+def load_outcomes():
+    outcomes = defaultdict(dict)
+    for row in zip_rows("OM2023.zip"):
+        cohort = number(row["OMCHRT"])
+        if cohort in OM_COHORTS:
+            outcomes[number(row["UNITID"])][cohort] = {
+                "cohort": number(row["OMACHRT"]),
+                "bachelors": number(row["OMBACH8"]),
+            }
+    return outcomes
 
 
 def load_enrollment():
     enrollment = defaultdict(dict)
     for row in zip_rows("EFFY2024.zip"):
         level = number(row["EFFYALEV"])
-        if level in LEVELS:
+        if level in ENTRY_LEVELS:
+            total = number(row["EFYTOTLT"])
             enrollment[number(row["UNITID"])][level] = {
-                "all": number(row["EFYTOTLT"]),
-                "nonresident": number(row["EFYNRALT"]),
+                "all": total,
+                "domestic": total - number(row["EFYNRALT"]),
             }
     return enrollment
 
 
-def level_counts(enrollment, unitid, level):
-    values = enrollment.get(unitid, {}).get(level, {"all": 0, "nonresident": 0})
-    return values["all"], values["all"] - values["nonresident"]
+def om_sum(outcomes, unitid, cohorts, field):
+    return sum(outcomes.get(unitid, {}).get(code, {}).get(field, 0) for code in cohorts)
 
 
-def selectivity_band(applications, admitted):
-    if not applications:
-        return "not reported/open"
-    rate = admitted / applications
-    if rate <= 0.10:
-        return "0-10%"
-    if rate <= 0.20:
-        return "10-20%"
-    if rate <= 0.50:
-        return "20-50%"
-    return ">50%"
-
-
-def institution_rows(directory, admissions, enrollment):
+def graduate_rows(directory, completions, outcomes, enrollment):
     rows = []
-    for unitid, institution in directory.items():
-        counts = {}
-        for level, label in LEVELS.items():
-            counts[label + "_all"], counts[label + "_domestic"] = level_counts(
-                enrollment, unitid, level
-            )
-        admission = admissions.get(unitid, {})
-        applications = number(admission.get("APPLCN"))
-        admitted = number(admission.get("ADMSSN"))
-        enrolled = number(admission.get("ENRLT"))
-        first_time = counts["first_time_domestic"]
-        transfer = counts["transfer_domestic"]
-        if not first_time + transfer:
+    for unitid, awards in completions.items():
+        if awards["bachelors_domestic"] <= 0:
             continue
-        rows.append({
+        institution = directory.get(unitid, {})
+        direct_bach = om_sum(outcomes, unitid, (10, 20), "bachelors")
+        transfer_bach = om_sum(outcomes, unitid, (30, 40), "bachelors")
+        direct_cohort = om_sum(outcomes, unitid, (10, 20), "cohort")
+        transfer_cohort = om_sum(outcomes, unitid, (30, 40), "cohort")
+        route_total = direct_bach + transfer_bach
+        row = {
             "unitid": unitid,
-            "institution": institution["INSTNM"],
-            "state": institution["STABBR"],
-            "control": CONTROL.get(number(institution["CONTROL"]), "other"),
-            "applications": applications,
-            "admitted": admitted,
-            "enrolled_fall": enrolled,
-            "admit_rate": admitted / applications if applications else "",
-            "selectivity_band": selectivity_band(applications, admitted),
-            **counts,
-            "transfer_share_new_domestic": (
-                transfer / (first_time + transfer) if first_time + transfer else ""
-            ),
-        })
+            "institution": institution.get("INSTNM", ""),
+            "state": institution.get("STABBR", ""),
+            "institution_level": LEVEL_NAMES.get(number(institution.get("ICLEVEL")), "unknown"),
+            "control": CONTROL_NAMES.get(number(institution.get("CONTROL")), "unknown"),
+            **awards,
+            "direct_bachelors_8yr": direct_bach,
+            "transfer_bachelors_8yr": transfer_bach,
+            "transfer_share_bachelors_8yr": transfer_bach / route_total if route_total else "",
+            "direct_entering_cohort": direct_cohort,
+            "transfer_entering_cohort": transfer_cohort,
+            "direct_bachelor_rate_8yr": direct_bach / direct_cohort if direct_cohort else "",
+            "transfer_bachelor_rate_8yr": transfer_bach / transfer_cohort if transfer_cohort else "",
+        }
+        for level, label in ENTRY_LEVELS.items():
+            values = enrollment.get(unitid, {}).get(level, {"all": 0, "domestic": 0})
+            row[label + "_entrants_all"] = values["all"]
+            row[label + "_entrants_domestic"] = values["domestic"]
+        rows.append(row)
     return sorted(rows, key=lambda row: (row["institution"], row["unitid"]))
 
 
-def national_rows(population, enrollment, directory):
-    totals = {}
-    for level, label in LEVELS.items():
-        pairs = [level_counts(enrollment, unitid, level) for unitid in directory]
-        totals[label + "_all"] = sum(pair[0] for pair in pairs)
-        totals[label + "_domestic"] = sum(pair[1] for pair in pairs)
-    new_domestic = totals["first_time_domestic"] + totals["transfer_domestic"]
+def national_rows(population, rows, completions):
+    domestic = sum(row["bachelors_domestic"] for row in rows)
+    all_awards = sum(values["bachelors_all"] for values in completions.values())
+    direct = sum(row["direct_bachelors_8yr"] for row in rows)
+    transfer = sum(row["transfer_bachelors_8yr"] for row in rows)
+    covered = sum(row["bachelors_domestic"] for row in rows
+                  if row["direct_bachelors_8yr"] + row["transfer_bachelors_8yr"])
+    non_four = sum(row["bachelors_domestic"] for row in rows
+                   if row["institution_level"] != "four-or-more-year")
     values = [
         ("age_18_resident_population", population, "Census resident population, July 1, 2023"),
-        ("first_time_four_year_all", totals["first_time_all"], "12-month entrants, all citizenships"),
-        ("first_time_four_year_domestic", totals["first_time_domestic"], "first-time total less nonresident aliens"),
-        ("first_time_share_of_age18", totals["first_time_domestic"] / population, "preliminary flow-to-cohort bridge"),
-        ("age18_bottom_constant", 1 - totals["first_time_domestic"] / population, "one minus preliminary bridge"),
-        ("transfer_into_four_year_all", totals["transfer_all"], "12-month entrants, all citizenships"),
-        ("transfer_into_four_year_domestic", totals["transfer_domestic"], "transfer total less nonresident aliens"),
-        ("transfer_share_of_new_domestic", totals["transfer_domestic"] / new_domestic, "transfer / (first-time + transfer)"),
-        ("continuing_four_year_domestic", totals["continuing_domestic"], "not a new-entry route"),
+        ("bachelors_all", all_awards, "2022-23 bachelor's degrees, all citizenships"),
+        ("bachelors_domestic", domestic, "bachelor's total less nonresident aliens"),
+        ("bachelors_share_age18", domestic / population, "final-degree flow / age-18 cohort"),
+        ("no_domestic_bachelor_constant", 1 - domestic / population, "one minus final-degree flow bridge"),
+        ("bachelor_awarding_institutions_all", len(completions), "institutions with at least one bachelor's degree"),
+        ("bachelor_awarding_institutions_domestic", len(rows), "institutions with at least one domestic bachelor's degree"),
+        ("non_four_year_classified_bachelors", non_four, "domestic awards outside ICLEVEL=1"),
+        ("non_four_year_classified_share", non_four / domestic, "share excluded by a four-year-only filter"),
+        ("om_direct_bachelors", direct, "first-time 2015-16 entrants earning a bachelor's there by 2023"),
+        ("om_transfer_bachelors", transfer, "non-first-time 2015-16 entrants earning a bachelor's there by 2023"),
+        ("om_transfer_share_bachelors", transfer / (direct + transfer), "graduate route mixture, all citizenships"),
+        ("annual_degrees_at_om_covered_institutions", covered / domestic, "coverage of institution-level route estimates"),
     ]
-    return [{"metric": key, "value": value, "definition": definition} for key, value, definition in values]
+    return [{"metric": key, "value": value, "definition": definition}
+            for key, value, definition in values]
 
 
-def band_rows(rows, population):
+def level_rows(rows):
     groups = defaultdict(list)
     for row in rows:
-        groups[row["selectivity_band"]].append(row)
+        groups[row["institution_level"]].append(row)
     output = []
-    for band in BANDS:
-        group = groups[band]
-        first_time = sum(row["first_time_domestic"] for row in group)
-        transfer = sum(row["transfer_domestic"] for row in group)
+    for level in ("four-or-more-year", "two-to-four-year", "under-two-year", "unknown"):
+        group = groups[level]
+        if not group:
+            continue
+        direct = sum(row["direct_bachelors_8yr"] for row in group)
+        transfer = sum(row["transfer_bachelors_8yr"] for row in group)
         output.append({
-            "selectivity_band": band,
+            "institution_level": level,
             "institutions": len(group),
-            "first_time_domestic": first_time,
-            "first_time_share_age18": first_time / population,
-            "transfer_domestic": transfer,
-            "transfer_share_new_domestic": transfer / (first_time + transfer),
+            "bachelors_domestic": sum(row["bachelors_domestic"] for row in group),
+            "om_direct_bachelors": direct,
+            "om_transfer_bachelors": transfer,
+            "om_transfer_share_bachelors": transfer / (direct + transfer) if direct + transfer else "",
         })
     return output
 
@@ -160,28 +181,21 @@ def write_tsv(path, rows):
     rows = list(rows)
     path.parent.mkdir(exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as output:
-        writer = csv.DictWriter(
-            output, fieldnames=list(rows[0]), delimiter="\t", lineterminator="\n"
-        )
+        writer = csv.DictWriter(output, fieldnames=list(rows[0]), delimiter="\t",
+                                lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
 
 def main():
     population = load_population()
-    directory = load_directory()
-    admissions = load_admissions()
-    enrollment = load_enrollment()
-    institutions = institution_rows(directory, admissions, enrollment)
-    national = national_rows(population, enrollment, directory)
-    write_tsv(DERIVED / "national_pathways.tsv", national)
-    write_tsv(DERIVED / "selectivity_pathways.tsv", band_rows(institutions, population))
-    write_tsv(DERIVED / "institution_pathways.tsv", institutions)
-    write_tsv(
-        DERIVED / "ultraselective_pathways.tsv",
-        (row for row in institutions if row["selectivity_band"] == "0-10%"),
-    )
-    print(f"wrote {len(institutions):,} institutions to {DERIVED}")
+    completions = load_completions()
+    rows = graduate_rows(load_directory(), completions, load_outcomes(), load_enrollment())
+    write_tsv(DERIVED / "institution_graduates.tsv", rows)
+    write_tsv(DERIVED / "national_graduates.tsv",
+              national_rows(population, rows, completions))
+    write_tsv(DERIVED / "graduate_pathways_by_level.tsv", level_rows(rows))
+    print(f"wrote {len(rows):,} bachelor-awarding institutions to {DERIVED}")
 
 
 if __name__ == "__main__":
