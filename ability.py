@@ -153,7 +153,11 @@ def ability_evidence_rows(graduates, admissions):
 
 
 def freshman_test_route_rows(evidence):
-    """Keep SAT and ACT as separate, non-exclusive measurement routes."""
+    """One institution-route row for SAT and one for ACT.
+
+    SAT section bars are columns on the SAT row, not separate routes.  The
+    component-level reconstruction below is only calibration machinery.
+    """
     output = []
     for row in evidence:
         if row["first_time_enrolled_2019"] == 0:
@@ -164,24 +168,42 @@ def freshman_test_route_rows(evidence):
             "state": row["state"],
             "first_time_enrolled_2019": row["first_time_enrolled_2019"],
             "test_policy_2019": row["test_policy_2019"],
-            **{field.lower() + "_2019": "" for field in SAT_FIELDS + ACT_FIELDS},
+            "sat_reading_writing_q25_2019": "",
+            "sat_reading_writing_q75_2019": "",
+            "sat_math_q25_2019": "",
+            "sat_math_q75_2019": "",
+            "act_composite_q25_2019": "",
+            "act_composite_q75_2019": "",
         }
-        for route, count_field, share_field, fields in (
-            ("SAT", "sat_submitters_2019", "sat_share_2019", SAT_FIELDS),
-            ("ACT", "act_submitters_2019", "act_share_2019", ACT_FIELDS),
+        for route, count_field, share_field, fields, thresholds in (
+            (
+                "SAT", "sat_submitters_2019", "sat_share_2019", SAT_FIELDS,
+                {
+                    "sat_reading_writing_q25_2019": row["satvr25_2019"],
+                    "sat_reading_writing_q75_2019": row["satvr75_2019"],
+                    "sat_math_q25_2019": row["satmt25_2019"],
+                    "sat_math_q75_2019": row["satmt75_2019"],
+                },
+            ),
+            (
+                "ACT", "act_submitters_2019", "act_share_2019", ACT_FIELDS,
+                {
+                    "act_composite_q25_2019": row["actcm25_2019"],
+                    "act_composite_q75_2019": row["actcm75_2019"],
+                },
+            ),
         ):
             if not all(row[field.lower() + "_2019"] != "" for field in fields):
                 continue
             output.append({
                 **common,
                 "route": route,
-                "route_count_2019": row[count_field],
-                "route_share_reported_2019": row[share_field],
+                "submitters_2019": row[count_field],
+                "share_of_institution_entrants_2019": row[share_field],
                 "score_scale": (
                     "SAT sections 200-800" if route == "SAT" else "ACT composite 1-36"
                 ),
-                **{field.lower() + "_2019": row[field.lower() + "_2019"]
-                   for field in fields},
+                **thresholds,
             })
     return output
 

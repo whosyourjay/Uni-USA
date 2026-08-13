@@ -27,23 +27,31 @@ The institution universe comes from actual 2022–23 bachelor's completions, wit
 
 The route mixture varies too much to substitute a national constant. Among the 2015–16 entering cohorts who earned a bachelor's there within eight years, the transfer share is 0.24% at Harvard, 0.83% at Stanford, 29.85% at Berkeley, 35.63% at UCLA, 35.04% at Columbia, and 91.11% at the University of Phoenix-Arizona. These are pathway shares, not ability estimates.
 
-## Freshman paths into the institution
+## Freshman admission paths
 
-The 2023 admissions cross-section is unsuitable for the ability model: widespread pandemic-era test-optional policies and permanent test-blind policies make an enormous unscored remainder. The fall-2019 baseline produces the following **additive** decomposition of all 1,944,624 first-time degree-seeking entrants at institutions that currently award bachelor's degrees.
+The 2023 admissions cross-section is unsuitable for the ability model: pandemic-era test-optional policies and permanent test-blind policies leave an enormous unscored remainder. Fall 2019 is the last pre-COVID entering class. Its routes currently look like this:
 
-| Admission path | Fall 2019 entrants | Share of all first-time entrants | Ability evidence |
-|---|---:|---:|---|
-| Selective: admission test required | 1,291,303 | 66.40% | Required test; institution-level SAT and/or ACT distributions where published |
-| Selective: admission test recommended | 100,883 | 5.19% | Submitted test where observed, plus the institution's enumerated school criteria |
-| Selective: admission test considered but not required | 139,753 | 7.19% | Submitted test where observed, plus the institution's enumerated school criteria |
-| Selective: admission test neither required nor recommended | 72,845 | 3.75% | School criteria enumerated separately; no common admission test |
-| Open admission | 339,523 | 17.46% | No subjective selection cutoff; estimate the entrant distribution from origin populations |
+| Route | How it works | Fall 2019 people observed | Share of all first-time entrants | Institution-level score coverage |
+|---|---|---:|---:|---|
+| SAT | Applicant submits SAT; the institution reports enrolled-student reading/writing and math 25th–75th percentiles | 846,219 submitters | 43.52% | 1,167 institutions; 846,098 submitters with both section bars |
+| ACT | Applicant submits ACT; the institution reports the enrolled-student composite 25th–75th percentiles | 673,606 submitters | 34.64% | 1,201 institutions; 673,599 submitters with a composite bar |
+| Open admission | No selective admission cutoff; entrants are modeled from the eligible origin population and enrollment selection | 339,523 entrants | 17.46% | No score cutoff |
+| Guaranteed rank admission | Published class-rank eligibility | UT Austin benchmark: at least 75% of Texas-resident freshman spaces; top 6% rule | Not a national share | Rank threshold; major placement still reviewed |
+| Recruited athletics | Coach-supported admission with academic eligibility or an institution-specific floor | Harvard benchmark: 9.5% of admits | Not a national share | Separate route adjustment; UCLA athlete GPA benchmark below |
+| Audition or portfolio | Performance or work sample is a material admission gate | At most 88,931 entrants exposed to an institution reporting it required | At most 4.57% | Exposure ceiling, not a route count |
+| Service-academy nomination | Nomination plus academic, physical, and medical selection | 3,696 domestic entrants at four academies | 0.19% | Academy SAT/ACT bars plus nonacademic screens |
+| Early decision/action | Earlier application round; any admission preference overlaps the substantive route above | Harvard benchmark: 935 of 1,950 admits | 47.95% at Harvard | Same academic evidence, possible round adjustment |
+| Legacy preference | Relationship preference layered over the substantive route | Harvard benchmark: 14% of admits | Not a national share | Separate preference adjustment |
 
-Only 16.13% are in the three selective paths without a required common test. A 317-person (0.02%) difference between the admissions and fall-enrollment reporting frames is retained in the generated reconciliation table rather than assigned to a path.
+SAT and ACT are deliberately separate rows and separate native-scale models. They are not additive: the same entrant can submit both, so their counts must not be summed and there will be no SAT-only, ACT-only, or every-test-subset rows. The SAT route has its two section bars as columns on one institution-route row. [`derived/freshman_test_routes.tsv`](derived/freshman_test_routes.tsv) is the canonical route table; one Harvard row is SAT and the next is ACT. [`derived/freshman_test_route_ability.tsv`](derived/freshman_test_route_ability.tsv) contains the component-level calibration machinery.
 
-SAT and ACT remain distinct, non-exclusive measurement routes. Among the complete entrant universe, 846,219 submitted SAT scores (43.52%) and 673,606 submitted ACT scores (34.64%). The same student can appear in both figures, so these two counts must not be added and there are no SAT-only, ACT-only, or test-subset rows. IPEDS 2019 publishes the 25th and 75th percentile of each SAT section and the ACT composite. [`derived/freshman_test_route_ability.tsv`](derived/freshman_test_route_ability.tsv) reconstructs each native-scale distribution without inventing an unpublished median or adding marginal SAT section quantiles as though they were total-score quantiles.
+The IPEDS values are enrolled-student quartiles, not binding admission cutoffs. For this project's endpoint that is useful: they describe the people whose ability distribution must ultimately be propagated into graduates. The reconstruction places 25%, 50%, and 25% of each institution-route's mass in the three bounded intervals defined by the native scale and its two reported quartiles. It does not invent an unpublished median or add marginal SAT section quantiles as though they were a total-score cutoff.
 
-The policy paths above are additive, but the criteria used inside selective review are not. [`derived/freshman_admission_considerations.tsv`](derived/freshman_admission_considerations.tsv) separately records GPA, rank, school record, college-preparatory curriculum, recommendations, formal competencies/portfolios, English tests, and other tests as required, recommended, considered, or neither. That table exposes the remaining subjective mechanisms instead of compressing them into a “transcript/GPA and institution-specific review” bucket.
+Test policy is a coverage audit, not the admission-route table. Of 1,944,624 first-time entrants, 1,291,303 (66.40%) attended institutions requiring a test, 100,883 (5.19%) institutions recommending it, 139,753 (7.19%) institutions considering but not requiring it, and 72,845 (3.75%) selective institutions neither requiring nor recommending it. Open admission accounts for 339,523 (17.46%); the remaining 317 people are a difference between IPEDS reporting frames. These categories partition entrants but do not measure ability.
+
+The criteria used inside applications also overlap and are therefore kept out of the route counts. [`derived/freshman_admission_considerations.tsv`](derived/freshman_admission_considerations.tsv) records GPA, rank, school record, college-preparatory curriculum, recommendations, formal competencies/portfolios, English tests, and other tests as required, recommended, considered, or neither. We will use those fields to identify and adjust particular routes, not collapse everyone into a “transcript/GPA and institution-specific review” residual.
+
+The special-channel figures are scale checks with deliberately different denominators, not numbers to add. Harvard's early program was nonbinding, so 935 / 1,950 measures timing, not the causal size of an early preference. The Harvard applicant study reports recruited athletes as 9.5% and legacies as 14% of admitted students across six cycles. At UCLA, the athlete committee admitted about 98% of reviewed cases in 2017–18 through 2019–20; in 2019–20 admitted athletes averaged 3.74 GPA versus 4.15 for the bottom quartile of all admits. That is direct evidence that the institution-wide SAT/ACT distribution cannot simply be assigned to recruited athletes. [`derived/special_route_benchmarks.tsv`](derived/special_route_benchmarks.tsv) retains each numerator, denominator, count concept, overlap warning, and source.
 
 Transfer is not in this freshman table. It contributes an estimated 801,135 final graduates, or 18.39% of the age-18 population, and is modeled from origin institutions, transfer GPA/coursework, and destination-specific completion rather than from the final institution's freshman distribution.
 
@@ -69,7 +77,7 @@ The evidence has to follow that equation:
 
 1. **No-prior-college graduates.** `ability.py` retains SAT and ACT as separate native-scale routes, including each route's two published quartiles and submitter count. At least one complete fall-2019 test distribution is available at institutions producing 1,499,079 (79.00%) of current domestic bachelor's awards. The current reconstruction puts 25%, 50%, and 25% uniform mass in the three bounded intervals defined by the scale endpoints and the reported quartiles. A later common ability scale will cross-calibrate the two routes; it will not collapse the route labels or count dual submitters twice.
 2. **Transfer graduates.** A final institution's freshman scores do not describe this group. Use a national longitudinal bachelor-recipient sample to estimate pre-college ability differences between direct and transfer graduates by destination type, then apply institution-specific transfer shares. Transfer-dominant institutions without a meaningful freshman intake will necessarily have wider uncertainty.
-3. **Selective paths without a required test.** These are now isolated as 16.13% of first-time entrants, split by recommended, considered, and neither-required-nor-recommended policy. They require school-record calibration and explicit special-channel adjustments; they cannot simply receive a test-submitter distribution.
+3. **Applicants without usable SAT or ACT evidence.** Test-policy categories are only a coverage audit. This group must be separated into actual mechanisms—guaranteed rank/GPA admission, ordinary academic review, recruited athletics, auditions/portfolios, service-academy nominations, and other named channels—before route-specific calibration.
 4. **Open admission.** This 17.46% path is not subjective admission. Its age-18 ability distribution must be estimated from the eligible origin population and actual enrollment selection, with wider uncertainty than a published score distribution.
 
 The active pass will first produce one endpoint-year estimate from these national tables. Additional admissions vintages and a longitudinal transfer bridge are recorded as later upgrades rather than blocking this estimate.
@@ -82,6 +90,7 @@ Downloaded inputs and generated tables stay local and are ignored by Git. [`sour
 python3 fetch_sources.py
 python3 pathways.py
 python3 ability.py
+python3 special_routes.py
 python3 -m unittest -v
 ```
 
@@ -95,4 +104,5 @@ Primary generated tables:
 - `derived/national_test_routes.tsv`
 - `derived/freshman_test_route_ability.tsv`
 - `derived/freshman_admission_considerations.tsv`
+- `derived/special_route_benchmarks.tsv`
 - `derived/graduate_pathways_by_level.tsv`

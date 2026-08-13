@@ -4,6 +4,7 @@ import unittest
 
 import ability
 import pathways
+import special_routes
 
 
 class AbilityEvidenceTests(unittest.TestCase):
@@ -61,8 +62,12 @@ class AbilityEvidenceTests(unittest.TestCase):
         self.assertEqual({row["route"] for row in routes}, {"SAT", "ACT"})
         harvard = [row for row in routes if row["institution"] == "Harvard University"]
         self.assertEqual([row["route"] for row in harvard], ["SAT", "ACT"])
-        self.assertEqual(harvard[0]["route_count_2019"], 1_172)
-        self.assertEqual(harvard[1]["route_count_2019"], 743)
+        self.assertEqual(harvard[0]["submitters_2019"], 1_172)
+        self.assertEqual(harvard[1]["submitters_2019"], 743)
+        self.assertEqual(harvard[0]["sat_reading_writing_q25_2019"], 710)
+        self.assertEqual(harvard[0]["act_composite_q25_2019"], "")
+        self.assertEqual(harvard[1]["sat_reading_writing_q25_2019"], "")
+        self.assertEqual(harvard[1]["act_composite_q25_2019"], 33)
 
     def test_national_test_counts_are_nonexclusive(self):
         paths = ability.admission_path_rows(
@@ -131,6 +136,25 @@ class AbilityEvidenceTests(unittest.TestCase):
         ]
         self.assertEqual({row["component"] for row in harvard_sat},
                          {"reading and writing", "math"})
+
+    def test_special_route_benchmarks_keep_denominators(self):
+        rows = special_routes.benchmark_rows(
+            self.graduates,
+            self.admissions,
+            ability.load_fall_enrollment(),
+        )
+        academies = next(
+            row for row in rows if row["route"] == "Service-academy nomination"
+        )
+        self.assertEqual(academies["numerator"], 3_696)
+        self.assertEqual(academies["denominator"], 1_944_624)
+        early = next(row for row in rows if row["route"] == "Early action")
+        self.assertEqual((early["numerator"], early["denominator"]), (935, 1_950))
+        athletics = [row for row in rows if row["route"] == "Recruited athletics"]
+        self.assertEqual({row["measure"] for row in athletics}, {
+            "share of admitted students",
+            "admit rate among committee-reviewed athlete cases",
+        })
 
 
 if __name__ == "__main__":

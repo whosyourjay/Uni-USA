@@ -6,27 +6,33 @@ Each item ends with a concrete intermediate output. Historical extensions remain
 
 ## 1. Separate and score freshman-admission routes
 
-IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entire admitted pool. SAT and ACT are separate measurement routes even when the same student submitted both. The additive admission paths are test required, test recommended, test considered but not required, test neither required nor recommended, and open admission; individual review criteria remain separate non-exclusive evidence fields.
+IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entire admitted pool. SAT and ACT are separate measurement routes even when the same student submitted both. Test-policy categories are a secondary coverage audit, not routes. Actual non-test mechanisms must be named and modeled separately.
 
-- [x] Inventory additive fall-2019 entry paths without manufacturing SAT-only/ACT-only/both-test categories. Count open admission from institutional characteristics and enrollment rather than burying it in an unreported-test residual.
+- [x] Create one institution-route row for SAT, with reading/writing and math score bars as columns on that row. Do not manufacture SAT-only/ACT-only/both-test categories.
+
+- [x] Create a separate institution-route row for ACT, with its composite score bar. Do not merge it with SAT in prose, tables, or generated output.
+
+- [x] Count open admission from institutional characteristics and enrollment rather than burying it in an unreported-test residual.
 
 - [x] Inventory the other fall-2019 IPEDS admissions bases: school GPA, rank, transcript, college-prep curriculum, recommendations, formal competencies/portfolios, English tests, and other tests.
 
-- [x] Reconstruct separate SAT-section distributions for each institution from the published 25th and 75th percentiles. Do not invent a median or add marginal section quantiles as if they were total-score quantiles.
+- [x] Reconstruct SAT-section distributions for each institution from the published 25th and 75th percentiles. These are calibration components under the SAT route, not separate admission routes. Do not invent a median or add marginal section quantiles as if they were total-score quantiles.
 
 - [x] Reconstruct a separate ACT-composite distribution in the same way. Do not average the native SAT and ACT numbers or use their sum as an entrant count.
 
 - [ ] Cross-calibrate the two test routes to a common age-18 percentile using national test-taker distributions and institutions reporting both. Preserve the route-specific estimates and disagreement after calibration.
 
-- [ ] Model the 16.13% in selective paths without a required test from nationally comparable school-record evidence. Keep recommended, considered-but-not-required, and neither-required-nor-recommended separate; do not recreate a generic no-test bucket.
+- [ ] Replace the unscored selective remainder with named mechanisms and ordinary academic review. Treat required/recommended/considered/neither as coverage metadata, not as the ability routes and not as a generic no-test bucket.
 
 - [ ] Model the 17.46% open-admission path from eligible origin populations and observed enrollment selection. It has no subjective admission cutoff and should not be pooled with selective non-test review.
 
-- [ ] Quantify special freshman channels missing from the fall-2019 IPEDS policy table: recruited athletics, auditions/portfolios beyond the generic competency flag, service-academy nominations, early-decision preferences, guaranteed admission, essays, legacy, work experience, and other school-specific programs. Keep an unknown residual where no national count exists.
+- [x] Establish scale benchmarks for recruited athletics, auditions/portfolios, service-academy nominations, early action, guaranteed rank admission, and legacy preference. Preserve each source denominator so benchmark admit rates are never added to national entrant counts.
+
+- [ ] Expand the special-channel benchmarks into national route weights. In particular, separate early timing from a causal preference, replace portfolio exposure with actual program counts, and obtain recruited-athlete and guaranteed-admission counts outside the benchmark institutions. Keep an unknown residual where no national count exists.
 
 - [ ] Weight institutions by current first-time domestic entrants to construct the national freshman pool, then validate by hiding score-reporting institutions. Report error separately for selective, broad-access, test-blind, and open-admission schools.
 
-**Outputs:** `derived/freshman_admission_paths.tsv`, `derived/freshman_test_routes.tsv`, `derived/freshman_test_route_ability.tsv`, and `derived/first_time_entrant_ability.tsv` (common-scale distributions with route-specific components).
+**Outputs:** `derived/freshman_admission_paths.tsv`, `derived/freshman_test_routes.tsv`, `derived/freshman_test_route_ability.tsv`, `derived/special_route_benchmarks.tsv`, and `derived/first_time_entrant_ability.tsv` (common-scale distributions with route-specific components).
 
 ## 2. Extend the origin-school model beyond bachelor's institutions
 
