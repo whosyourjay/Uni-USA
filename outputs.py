@@ -2,6 +2,7 @@
 """Build the canonical school and major tables for the endpoint model."""
 
 import re
+from collections import Counter
 from html.parser import HTMLParser
 
 import ability
@@ -172,6 +173,12 @@ def build_tables():
     )
     schools = school_rows(graduates, route_lookup(graduates))
     majors = major_rows(schools, load_cip_titles())
+    school_counts = {row["school_id"]: row["bachelors"] for row in schools}
+    major_counts = Counter()
+    for row in majors:
+        major_counts[row["school_id"]] += row["bachelors"]
+    if school_counts != major_counts:
+        raise ValueError("School and major domestic bachelor counts do not reconcile")
     return schools, majors
 
 
