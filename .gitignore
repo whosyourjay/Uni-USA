@@ -1,5 +1,7 @@
 __pycache__/
 *.py[cod]
 derived/
+schools.tsv
+majors.tsv
 sources/*
 !sources/README.md

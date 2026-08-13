@@ -20,5 +20,6 @@ These are the complete official tables used by the analysis, not scraped samples
 | `OM2023_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/OM2023_Dict.zip> |
 | `SAT-national-percentiles.html` | College Board | SAT section-score percentiles; the calculation uses only the User Group columns based on actual test takers | <https://research.collegeboard.org/reports/sat-suite/understanding-scores/sat> |
 | `2018-act-national-profile.pdf` | ACT | Exact ACT composite score frequencies for the 2018 tested graduating class, Table 2.1 | <https://www.act.org/content/dam/act/unsecured/documents/cccr2018/P_99_999999_N_S_N00_ACT-GCPR_National.pdf> |
+| `CIP2020-browse.html` | NCES IPEDS | Complete 2020 Classification of Instructional Programs code and title list | <https://nces.ed.gov/ipeds/cipcode/browse.aspx?y=56> |
 
 Run `python3 fetch_sources.py` to verify or restore the local copies. The downloader pins the SHA-256 digest of every input. `calibrate_tests.py` uses `pdftotext -layout` to parse the ACT table.

@@ -120,6 +120,8 @@ Neither the freshman nor transfer entrant distribution is yet the distribution o
 
 ## 7. Produce the final institution distributions
 
+- [x] Create canonical `schools.tsv` and `majors.tsv` endpoint tables, weighted by domestic 2022–23 bachelor awards. Keep final ability and rank blank while only route-specific SAT/ACT evidence is available; do not mislabel freshman evidence as graduate ability. Major rows inherit school-level route evidence until a major-specific source is added.
+
 - [ ] Mix direct and transfer graduate distributions using each final institution's graduate route share.
 
 - [ ] Weight institutions by domestic bachelor's awards to construct the national bachelor-recipient distribution.

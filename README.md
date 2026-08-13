@@ -113,5 +113,6 @@ python3 pathways.py
 python3 ability.py
 python3 calibrate_tests.py
 python3 special_routes.py
+python3 outputs.py
 python3 -m unittest -v
 ```

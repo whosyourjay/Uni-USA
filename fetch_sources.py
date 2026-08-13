@@ -73,6 +73,10 @@ SOURCES = {
         "P_99_999999_N_S_N00_ACT-GCPR_National.pdf",
         "a8e819602d03be5897358456644aefbffd22207a138c67f8f0560573fa9fb3f2",
     ),
+    "CIP2020-browse.html": (
+        "https://nces.ed.gov/ipeds/cipcode/browse.aspx?y=56",
+        "f4963a49fbb1b34b9e3eb2549ca59c36f69fbf676031edbc2c3fb95512d8223d",
+    ),
 }
 
 
