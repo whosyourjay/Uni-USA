@@ -86,6 +86,19 @@ The transfer row contributes an estimated 801,135 final graduates. It is modeled
 
 The cohort pathway counts and the current annual degree counts are different vintages and must not be added. Only the route *share* is carried to the current graduate weight.
 
+The origin model cannot stop at four-year colleges. The 2023–24 domestic first-time postsecondary pool splits as follows; these entrants include adults and therefore are not an additive partition of the age-18 population.
+
+| Origin institution path | Domestic first-time entrants | Share of origin pool |
+|---|---:|---:|
+| Four-or-more-year | 2,262,371 | 60.54% |
+| Public associate-degree (community-college proxy) | 745,860 | 19.96% |
+| Nonpublic associate-degree | 108,284 | 2.90% |
+| Two-to-four-year certificate/diploma | 403,106 | 10.79% |
+| Less-than-two-year | 214,032 | 5.73% |
+| Directory unmatched | 3,286 | 0.09% |
+
+`derived/origin_institution_ability.tsv` carries all 5,417 origin institutions. SAT and ACT route readings are attached where the 2019 score bars exist; broad-access origins remain explicitly unscored until their entrant distributions are modeled.
+
 ## Ability model
 
 For institution `y`, the target distribution is
@@ -113,6 +126,7 @@ python3 pathways.py
 python3 ability.py
 python3 calibrate_tests.py
 python3 special_routes.py
+python3 origins.py
 python3 outputs.py
 python3 -m unittest -v
 ```

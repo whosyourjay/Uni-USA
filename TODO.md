@@ -42,11 +42,11 @@ IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entir
 
 The existing final-institution table contains bachelor's-awarding institutions. Transfer origins instead include community colleges, other two-year institutions, four-year institutions, and schools whose students rarely receive a bachelor's there.
 
-- [ ] Build the complete 2023 domestic undergraduate origin universe from IPEDS, without filtering on whether the institution awards bachelor's degrees.
+- [x] Build the complete 2023–24 domestic first-time postsecondary origin universe from IPEDS, without filtering on whether the institution awards bachelor's degrees.
 
-- [ ] Quantify first-time entrants by origin type: community college, other two-year, bachelor's institution, less-than-two-year, and unknown/non-U.S. origin.
+- [x] Quantify first-time entrants by origin type: four-or-more-year, public associate-degree (community-college proxy), nonpublic associate-degree, two-to-four-year certificate/diploma, less-than-two-year, and directory-unmatched. Do not misclassify the large two-to-four-year certificate path as bachelor's study.
 
-- [ ] Apply the freshman route model wherever SAT, ACT, or school-record evidence exists.
+- [x] Attach the separate SAT and ACT route model wherever published score bars exist. School-record-only evidence still needs a common calibration before it can be scored.
 
 - [ ] Fit a separate broad-access model for community colleges and other test-sparse origins. Use only nationally comparable predictors and make its uncertainty wider than directly observed test distributions.
 
