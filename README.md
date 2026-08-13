@@ -47,6 +47,10 @@ Early decision and early action are not separate routes. They are application ro
 
 The IPEDS values are enrolled-student quartiles, not binding admission cutoffs. For this project's endpoint that is useful: they describe the people whose ability distribution must ultimately be propagated into graduates. The reconstruction places 25%, 50%, and 25% of each institution-route's mass in the three bounded intervals defined by the native scale and its two reported quartiles. It does not invent an unpublished median or add marginal SAT section quantiles as though they were a total-score cutoff.
 
+`calibrate_tests.py` now puts the two test routes on one latent coordinate while retaining separate estimates. It first converts each SAT reading/writing, SAT math, and ACT composite bar to its percentile in that measurement's reconstructed national enrolled-submitter pool. On institution/quartile observations, it fits `pool percentile = measurement intercept + measurement slope * common component`. The bridge uses 1,144 institutions reporting both tests. Its residual RMSE is 2.28–2.57 pool-percentile points across the three measurements. The SAT route estimate combines its two separately calibrated section measurements; the ACT route estimate remains its calibrated composite. Their disagreement is retained on both rows: submitter-weighted ACT-minus-SAT RMSE is 0.19 common-component units at q25 and 0.21 at q75.
+
+This common component is not yet the final percentile. Its unit is the weighted standard deviation among the linked institution/quartile observations. Converting it to a percentile among bachelor recipients requires the non-overlapping route mixture and the entrant-to-graduate selection adjustment; only then is the no-bachelor mass prepended. [`derived/freshman_test_route_common_scale.tsv`](derived/freshman_test_route_common_scale.tsv) contains the separate route bars and gaps, while [`derived/test_calibration_parameters.tsv`](derived/test_calibration_parameters.tsv) makes the fitted bridge auditable.
+
 Test policy is a coverage audit, not the admission-route table. Of 1,944,624 first-time entrants, 1,291,303 (66.40%) attended institutions requiring a test, 100,883 (5.19%) institutions recommending it, 139,753 (7.19%) institutions considering but not requiring it, and 72,845 (3.75%) selective institutions neither requiring nor recommending it. Open admission accounts for 339,523 (17.46%); the remaining 317 people are a difference between IPEDS reporting frames. These categories partition entrants but do not measure ability.
 
 The criteria used inside applications also overlap and are therefore kept out of the route counts. [`derived/freshman_admission_considerations.tsv`](derived/freshman_admission_considerations.tsv) records GPA, rank, school record, college-preparatory curriculum, recommendations, formal competencies/portfolios, English tests, and other tests as required, recommended, considered, or neither. We will use those fields to identify and adjust particular routes, not collapse everyone into a “transcript/GPA and institution-specific review” residual.
@@ -90,6 +94,7 @@ Downloaded inputs and generated tables stay local and are ignored by Git. [`sour
 python3 fetch_sources.py
 python3 pathways.py
 python3 ability.py
+python3 calibrate_tests.py
 python3 special_routes.py
 python3 -m unittest -v
 ```
@@ -103,6 +108,9 @@ Primary generated tables:
 - `derived/freshman_test_routes.tsv`
 - `derived/national_test_routes.tsv`
 - `derived/freshman_test_route_ability.tsv`
+- `derived/freshman_test_route_common_scale.tsv`
+- `derived/test_calibration_parameters.tsv`
+- `derived/test_route_disagreement.tsv`
 - `derived/freshman_admission_considerations.tsv`
 - `derived/open_admission_endpoint.tsv`
 - `derived/admission_benchmarks.tsv`

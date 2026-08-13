@@ -3,6 +3,7 @@
 import unittest
 
 import ability
+import calibrate_tests
 import pathways
 import special_routes
 
@@ -154,6 +155,36 @@ class AbilityEvidenceTests(unittest.TestCase):
         ]
         self.assertEqual({row["component"] for row in harvard_sat},
                          {"reading and writing", "math"})
+
+    def test_sat_act_common_component_keeps_route_disagreement(self):
+        components = ability.test_component_rows(self.rows)
+        fit = calibrate_tests.fit_component(components)
+        self.assertEqual(
+            set(fit["parameters"]),
+            {"SAT reading/writing", "SAT math", "ACT composite"},
+        )
+        self.assertTrue(all(
+            parameter["slope"] > 0 for parameter in fit["parameters"].values()
+        ))
+        routes = calibrate_tests.route_rows(components, fit)
+        self.assertTrue(all(
+            row["common_component_q25"] <= row["common_component_q75"]
+            for row in routes
+        ))
+        harvard = {
+            row["route"]: row
+            for row in routes if row["institution"] == "Harvard University"
+        }
+        self.assertEqual(set(harvard), {"SAT", "ACT"})
+        self.assertLess(
+            harvard["SAT"]["common_component_q25"],
+            harvard["SAT"]["common_component_q75"],
+        )
+        self.assertNotEqual(harvard["SAT"]["act_minus_sat_q25"], "")
+        self.assertEqual(
+            harvard["SAT"]["act_minus_sat_q25"],
+            harvard["ACT"]["act_minus_sat_q25"],
+        )
 
     def test_special_route_benchmarks_keep_denominators(self):
         rows = special_routes.benchmark_rows(

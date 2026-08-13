@@ -20,7 +20,7 @@ IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entir
 
 - [x] Reconstruct a separate ACT-composite distribution in the same way. Do not average the native SAT and ACT numbers or use their sum as an entrant count.
 
-- [ ] Cross-calibrate the two test routes to a common age-18 percentile using national test-taker distributions and institutions reporting both. Preserve the route-specific estimates and disagreement after calibration.
+- [x] Cross-calibrate the two test routes to a common latent component using their reconstructed national enrolled-submitter distributions and institutions reporting both. Preserve separate SAT and ACT estimates and their disagreement. The component becomes a graduate percentile only after route weighting and completion selection.
 
 - [ ] Replace the unscored selective remainder with named mechanisms and ordinary academic review. Treat required/recommended/considered/neither as coverage metadata, not as the ability routes and not as a generic no-test bucket.
 
@@ -32,7 +32,7 @@ IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entir
 
 - [ ] Weight institutions by current first-time domestic entrants to construct the national freshman pool, then validate by hiding score-reporting institutions. Report error separately for selective, broad-access, test-blind, and open-admission schools.
 
-**Outputs:** `derived/freshman_admission_paths.tsv`, `derived/freshman_test_routes.tsv`, `derived/freshman_test_route_ability.tsv`, `derived/open_admission_endpoint.tsv`, `derived/admission_benchmarks.tsv`, and `derived/first_time_entrant_ability.tsv` (common-scale distributions with route-specific components).
+**Outputs:** `derived/freshman_admission_paths.tsv`, `derived/freshman_test_routes.tsv`, `derived/freshman_test_route_ability.tsv`, `derived/freshman_test_route_common_scale.tsv`, `derived/open_admission_endpoint.tsv`, `derived/admission_benchmarks.tsv`, and `derived/first_time_entrant_ability.tsv` (common-scale distributions with route-specific components).
 
 ## 2. Extend the origin-school model beyond bachelor's institutions
 
