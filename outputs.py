@@ -5,6 +5,8 @@ import re
 from collections import Counter
 from html.parser import HTMLParser
 
+import ability
+import final_routes
 import pathways
 import scores
 import transfer
@@ -58,56 +60,88 @@ def current_split(bachelors, transfer_share):
     return round(bachelors - transfer, 3), transfer
 
 
-def school_rows(graduates, routes, transfer_score):
+def school_rows(graduates, routes, transfer_score, institution_routes):
+    paths_by_id = {}
+    for row in institution_routes:
+        paths_by_id.setdefault(row["unitid"], {})[row["route"]] = row[
+            "estimated_bachelors"
+        ]
     rows = []
     for graduate in graduates:
         route = scores.route_fields(graduate["unitid"], routes)
-        freshman_score = route["freshman_score"]
-        share = graduate["transfer_share_bachelors_8yr"]
-        direct, transfer = current_split(
-            graduate["bachelors_domestic"],
-            share,
+        paths = paths_by_id[graduate["unitid"]]
+        bachelors = graduate["bachelors_domestic"]
+        transfer_count = paths["Transfer"]
+        direct = bachelors - transfer_count
+        share = transfer_count / bachelors
+        freshman_components = [
+            (route["sat_taker_percentile_2019"], paths.get("SAT", 0)),
+            (route["act_taker_percentile_2019"], paths.get("ACT", 0)),
+            (route["freshman_score"], paths.get("Service-academy nomination", 0)),
+            (97.0, paths.get("Automatic class-rank guarantee", 0)),
+        ]
+        freshman_components = [
+            (score, count)
+            for score, count in freshman_components
+            if score != "" and count > 0
+        ]
+        freshman_weight = sum(count for _, count in freshman_components)
+        freshman_score = (
+            sum(score * count for score, count in freshman_components)
+            / freshman_weight
+            if freshman_weight else ""
         )
-        components = []
-        if share == "":
-            if freshman_score != "":
-                components.append((freshman_score, 1))
-        else:
-            if freshman_score != "":
-                components.append((freshman_score, 1 - share))
-            components.append((transfer_score, share))
-        coverage = sum(weight for _, weight in components)
+        components = freshman_components + [(transfer_score, transfer_count)]
+        coverage_count = sum(count for _, count in components)
+        coverage = coverage_count / bachelors
         rough_ability = (
-            sum(value * weight for value, weight in components) / coverage
-            if coverage
+            sum(value * count for value, count in components) / coverage_count
+            if coverage_count
             else ""
         )
         if rough_ability == "":
             status = "unscored"
-        elif share == "":
-            status = "rough: freshman score; transfer share missing"
         elif freshman_score == "":
             status = "rough: pooled transfer-origin score only"
         else:
-            status = "rough: freshman plus pooled transfer-origin score"
+            status = "rough: scored freshman routes plus pooled transfer score"
         rows.append({
             "rank": "",
             "ability": round(rough_ability, 3) if rough_ability != "" else "",
             "ability_coverage": round(coverage, 6) if coverage else "",
+            **route,
             "freshman_score": freshman_score,
             "transfer_score": transfer_score if share != "" and share > 0 else "",
             "school_id": graduate["unitid"],
             "school": graduate["institution"],
             "state": graduate["state"],
-            "bachelors": graduate["bachelors_domestic"],
-            "estimated_direct_bachelors": direct,
-            "estimated_transfer_bachelors": transfer,
-            "transfer_share": (
-                round(share, 6)
-                if graduate["transfer_share_bachelors_8yr"] != ""
-                else ""
+            "bachelors": bachelors,
+            "estimated_sat_bachelors": round(paths.get("SAT", 0), 3),
+            "estimated_act_bachelors": round(paths.get("ACT", 0), 3),
+            "estimated_open_admission_bachelors": round(
+                paths.get("Open admission", 0), 3
             ),
-            **route,
+            "estimated_automatic_rank_bachelors": round(
+                paths.get("Automatic class-rank guarantee", 0), 3
+            ),
+            "estimated_recruited_athlete_bachelors": round(
+                paths.get("Recruited athletics", 0), 3
+            ),
+            "estimated_audition_portfolio_bachelors": round(
+                paths.get("Audition or portfolio", 0), 3
+            ),
+            "estimated_service_academy_bachelors": round(
+                paths.get("Service-academy nomination", 0), 3
+            ),
+            "estimated_other_freshman_bachelors": round(
+                paths.get("School-record review without test evidence", 0), 3
+            ),
+            "estimated_direct_bachelors": round(direct, 3),
+            "estimated_transfer_bachelors": round(transfer_count, 3),
+            "transfer_share": round(share, 6),
+            "freshman_score_basis": (
+                "weighted SAT, ACT, automatic-rank, and service-academy routes"
+            ),
             "ability_status": status,
         })
     rows.sort(key=lambda row: (
@@ -191,7 +225,18 @@ def build_tables():
         for row in transfer_summary
         if row["origin_type"] == "All origins"
     )
-    schools = school_rows(graduates, scores.route_lookup(graduates), transfer_score)
+    institution_routes = final_routes.institution_route_rows(
+        graduates,
+        ability.load_admissions(),
+        ability.load_characteristics(),
+        pathways.load_population(),
+    )
+    schools = school_rows(
+        graduates,
+        scores.route_lookup(graduates),
+        transfer_score,
+        institution_routes,
+    )
     majors = major_rows(schools, load_cip_titles())
     school_counts = {row["school_id"]: row["bachelors"] for row in schools}
     major_counts = Counter()

@@ -8,29 +8,17 @@ Each item ends with a concrete intermediate output. Historical extensions remain
 
 IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entire admitted pool. SAT and ACT are separate measurement routes even when the same student submitted both. Test-policy categories are a secondary coverage audit, not routes. Actual non-test mechanisms must be named and modeled separately.
 
-- [x] Create one institution-route row for SAT, with reading/writing and math score bars as columns on that row. Do not manufacture SAT-only/ACT-only/both-test categories.
+- [x] Build one exhaustive annual-flow table. Subtract transfers before assigning the remaining bachelor's recipients to SAT, ACT, open admission, automatic rank, athletics, audition/portfolio, service academy, or school-record review. Keep certificates and associate's degrees out of the no-award residual.
 
-- [x] Create a separate institution-route row for ACT, with its composite score bar. Do not merge it with SAT in prose, tables, or generated output.
+- [ ] Get data on class-rank thresholds and estimate ability from this
 
-- [x] Count open admission from institutional characteristics and enrollment rather than burying it in an unreported-test residual.
-
-- [x] Inventory the other fall-2019 IPEDS admissions bases: school GPA, rank, transcript, college-prep curriculum, recommendations, formal competencies/portfolios, English tests, and other tests.
-
-- [x] Reconstruct SAT-section distributions for each institution from the published 25th and 75th percentiles. These are calibration components under the SAT route, not separate admission routes. Keep the modeled median distinct from a published statistic, and do not add marginal section quantiles as if they were total-score quantiles.
-
-- [x] Reconstruct a separate ACT-composite distribution in the same way. Do not average the native SAT and ACT numbers or use their sum as an entrant count.
-
-- [x] Convert the SAT section bars to College Board User Group percentiles among actual SAT takers. Under the declared quartile reconstruction, estimate each section median from the q25/q75 midpoint and use the mean of its two percentile ranks as the SAT route statistic.
-
-- [x] Convert ACT composite bars to exact percentiles among ACT-tested graduates using the official national score-frequency table. Keep this as an ACT route statistic rather than equating it to the same-numbered SAT percentile.
+- [ ] Get data on major-specific thresholds for open universities
 
 - [ ] Link the separate SAT-taker and ACT-taker percentile scales to the age-18 ability population. Account for selection into each testing population and use dual-reporting institutions as a consistency check, not as license to merge route counts.
 
 - [ ] Replace the unscored selective remainder with named mechanisms and ordinary academic review. Treat required/recommended/considered/neither as coverage metadata, not as the ability routes and not as a generic no-test bucket.
 
 - [ ] Model the 17.46% open-admission entrant path from eligible origin populations and observed enrollment selection. For the first scored pass, leave its direct-graduate component explicitly unscored rather than equating entrants with the eligibility floor. This defers about 1.93% of current domestic bachelor's awards; most degrees awarded by open-admission institutions belong to the separately modeled transfer component.
-
-- [x] Establish scale benchmarks for the recruited-athlete, audition/portfolio, service-academy, and automatic class-rank routes. Separately classify early action/decision as an application-round overlay and legacy as a preference overlay. Preserve each source denominator so benchmark rates are never added to national entrant counts.
 
 - [ ] Expand the actual selection-channel benchmarks into national route weights. Replace portfolio exposure with actual program counts and obtain recruited-athlete and automatic class-rank counts outside the benchmark institutions. Estimate early-round or legacy adjustments only where academic distributions identify them; never turn either overlay into a route count. Keep an unknown residual where no national count exists.
 
@@ -42,13 +30,9 @@ IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entir
 
 The existing final-institution table contains bachelor's-awarding institutions. Transfer origins instead include community colleges, other two-year institutions, four-year institutions, and schools whose students rarely receive a bachelor's there.
 
-- [x] Build the complete 2023–24 domestic first-time postsecondary origin universe from IPEDS, without filtering on whether the institution awards bachelor's degrees.
-
-- [x] Quantify first-time entrants by origin type: four-or-more-year, public associate-degree (community-college proxy), nonpublic associate-degree, two-to-four-year certificate/diploma, less-than-two-year, and directory-unmatched. Do not misclassify the large two-to-four-year certificate path as bachelor's study.
-
-- [x] Attach the separate SAT and ACT route model wherever published score bars exist. School-record-only evidence still needs a common calibration before it can be scored.
-
 - [ ] Fit a separate broad-access model for community colleges and other test-sparse origins. Use only nationally comparable predictors and make its uncertainty wider than directly observed test distributions.
+
+- [ ] Extend `schools.tsv` and `majors.tsv` to the certificate and associate institutions represented in the national pathway table, without treating a credential count as a unique age-18 person.
 
 - [ ] Check state and system effects. A single national community-college value is unlikely to describe both universal-access systems and systems that divert different portions of high-school graduates into two-year colleges.
 
@@ -119,8 +103,6 @@ Neither the freshman nor transfer entrant distribution is yet the distribution o
 **Output:** route-specific ability distributions among graduates, with the entrant-to-graduate shift reported explicitly.
 
 ## 7. Produce the final institution distributions
-
-- [x] Create canonical `schools.tsv` and `majors.tsv` endpoint tables, weighted by domestic 2022–23 bachelor awards. Keep final ability and rank blank while only route-specific SAT/ACT evidence is available; do not mislabel freshman evidence as graduate ability. Major rows inherit school-level route evidence until a major-specific source is added.
 
 - [ ] Mix direct and transfer graduate distributions using each final institution's graduate route share.
 

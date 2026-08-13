@@ -12,68 +12,72 @@ Known limitations and planned work live in `TODO.md`.
 
 ## Admission paths
 
-The endpoint is the final bachelor's institution, so transfer status is defined
-when a student enters that institution. These rows partition the age-18 population.
+These mutually exclusive rows cover the full age-18-sized annual flow. Lower
+credentials are kept instead of being buried in `No bachelor's`. Within the
+bachelor rows, anyone who transfers is removed from their original freshman
+route and appears only in `Transfer`.
 
-| Path | How it works | People | Share | Ability evidence |
-| --- | --- | ---: | ---: | --- |
-| No bachelor's | No degree in the annual flow | 2,459,942 | 56.45% | Bottom mass |
-| Freshman | No prior college at final school | 1,096,408 | 25.16% | SAT/ACT at final school |
-| Transfer | Prior college at final school | 801,135 | 18.39% | Freshman score at origin |
-| **Total** |  | **4,357,485** | **100.00%** |  |
-
-The degree flow is 1,897,543 domestic bachelor's awards, defined as all IPEDS
-awards less nonresident aliens. The freshman/transfer split comes from the
-2015–16 Outcome Measures cohorts that completed a bachelor's by 2023. Annual
-degrees are a provisional bridge to the 2023 age-18 population, not a literal
-cohort count.
-
-SAT and ACT remain separate evidence routes because their test-taking populations
-differ. A student may submit both, so test submissions are not admission paths
-and are not added in the population table.
-
-The fall 2019 freshman pool contains 1,944,624 entrants. Institutional policy
-partitions it into test required 1,291,303 (66.40%), test recommended 100,883
-(5.19%), test considered 139,753 (7.19%), selective with no reported test role
-72,845 (3.75%), open admission 339,523 (17.46%), and a 317-person reporting
-reconciliation. These policy groups sum to the full pool but are only a coverage
-audit; the measurements and special selection mechanisms are:
-
-| Freshman mechanism | Count or benchmark | Share | Ability measure |
+| Path | People | Share of age 18 | Ability measure |
 | --- | ---: | ---: | --- |
-| SAT | 846,219 submitters | 43.52% | Section score bars |
-| ACT | 673,606 submitters | 34.64% | Composite score bar |
-| Open admission | 339,523 entrants | 17.46% | Unscored |
-| Automatic class rank | ≥75% of UT Austin's Texas freshman spaces | Campus benchmark | Top-6% rank |
-| Recruited athletics | 9.5% of Harvard admits | Campus benchmark | Separate adjustment |
-| Audition or portfolio | ≤88,931 exposed entrants | ≤4.57% | Unscored ceiling |
-| Service academies | 3,696 entrants | 0.19% | SAT/ACT plus screens |
+| No postsecondary award | 426,832 | 9.80% | Schooling history not yet separated |
+| Certificate under 12 weeks | 104,149 | 2.39% | Institution model pending |
+| Certificate, 12 weeks–1 year | 501,753 | 11.51% | Institution model pending |
+| Certificate, 1–2 years | 453,093 | 10.40% | Institution model pending |
+| Associate's degree | 950,699 | 21.82% | Two-year institution model pending |
+| Certificate, 2–4 years | 23,416 | 0.54% | Institution model pending |
+| SAT | 477,727 | 10.96% | SAT-taker percentile; mean 73.13 |
+| ACT | 396,640 | 9.10% | ACT-taker percentile; mean 76.86 |
+| Open admission | 41,181 | 0.95% | Not yet scored |
+| Automatic class-rank guarantee | 5,492 | 0.13% | UT top-6% proxy; center 97.00 |
+| Recruited athletics | 157 | <0.01% | Harvard benchmark only; adjustment pending |
+| Audition or portfolio | 57,074 | 1.31% | Required-institution proxy; adjustment pending |
+| Service-academy nomination | 3,076 | 0.07% | Academy tests and screens; mean 87.58 |
+| School-record review without test evidence | 115,061 | 2.64% | GPA/rank calibration pending |
+| Transfer | 801,135 | 18.39% | Origin mixture; provisional mean 65.63 |
+| **Total** | **4,357,485** | **100.00%** |  |
 
-SAT and ACT shares overlap. Early action/decision and legacy status are preference
-overlays rather than separate measurement routes; Harvard admitted 935 of 1,950
-students early in the benchmark year.
+Credential counts are 2022–23 IPEDS awards less nonresident aliens. The residual
+is calculated only after subtracting certificates, associate's degrees, and
+bachelor's degrees from the 2023 age-18 population. These annual awards can
+include older recipients and multiple awards; they are a flow bridge, not a
+literal age-18 cohort.
 
-Transfer shares differ sharply by destination: 0.24% at Harvard, 0.83% at
-Stanford, 29.85% at Berkeley, 35.63% at UCLA, 35.04% at Columbia, and 91.11% at
-the University of Phoenix-Arizona.
+The bachelor flow is 1,897,543. Its freshman/transfer split uses the 2015–16
+Outcome Measures cohorts that completed a bachelor's by 2023.
+
+Within each institution, SAT and ACT submissions are fractionally de-overlapped
+without creating test-subset rows. The resulting freshman-route mix is applied
+only to graduates not assigned to `Transfer`. The unresolved row currently
+contains ordinary transcript/GPA/rank review. The automatic-rank row applies the
+UT benchmark—75% of Texas freshman spaces—to UT's estimated non-transfer
+graduates. The athletics row applies Harvard's 9.5% benchmark only to Harvard.
+The audition row counts non-transfer graduates at institutions reporting formal
+competency or portfolio as required; its underlying freshman exposure ceiling is
+88,931. These are explicit first proxies, not national measurements. Early
+rounds and legacy are overlays, not routes.
 
 ## Outputs
 
 - `schools.tsv` — 2,356 final institutions, ranked where a rough score is available
 - `majors.tsv` — 64,314 institution-major pairs; major scores currently inherit
   the institution score
+- `derived/final_admission_paths.tsv` — the exhaustive national table above
+- `derived/institution_final_routes.tsv` — the same mutually exclusive routes
+  at each final institution
 - `derived/transfer_origin_scores.tsv` — origin scores and transfer-out weights
 - `derived/transfer_score.tsv` — pooled transfer score and coverage by origin type
-- `derived/institution_graduates.tsv` — degree weights and destination transfer shares
 
 Downloaded sources and generated tables stay local and out of Git.
 
 ## Coverage
 
 Fall 2019 SAT or ACT score bars cover 1,224 institutions awarding 1,499,079
-domestic bachelor's degrees, 79.0% of the degree flow. Adding the pooled transfer
-component gives a provisional score to 2,201 institutions covering 1,892,900
-degrees, 99.76% of the flow.
+domestic bachelor's degrees. The currently scored route mass—SAT, ACT,
+automatic rank, service academies, and the pooled transfer proxy—is 1,684,016
+bachelor's recipients, 88.75% of the bachelor flow. At least one measured
+component gives a provisional score to 2,308 institutions covering 1,896,350
+degrees; `ability_coverage` prevents a tiny transfer component from being
+mistaken for full coverage.
 
 IPEDS reports 301,856 domestic transfer-outs from the relevant first-time,
 full-time cohorts. Origin schools with a measured freshman score account for
@@ -97,10 +101,10 @@ Graduation does not change the score distribution. Final degree counts weight
 institutions, but the model makes no ability adjustment for differential dropout.
 It also treats the reported transfer origin as the only transfer.
 
-An institution's freshman score is the median of its available SAT and ACT route
-centers. The SAT center averages the reading/writing and math median percentile
-ranks; the ACT center uses the composite median percentile rank. Both use
-percentiles among actual test takers.
+The SAT center averages the reading/writing and math median percentile ranks;
+the ACT center uses the composite median percentile rank. Both use percentiles
+among actual test takers. They remain separate routes throughout the final
+mixture.
 
 Across institutions with complete score bars, the SAT mixture contains 846,098
 submitters and has center 71.59; the ACT mixture contains 673,599 and has center
@@ -111,21 +115,21 @@ The pooled transfer score is the transfer-out-weighted median of origin-school
 freshman scores. Unscored origins use their institution-type median. This first
 pass gives `65.626`.
 
-For final institution `y`, the rough score is
-
-`score_y = (1 - transfer_share_y) freshman_score_y + transfer_share_y transfer_score`.
-
-`transfer_share_y` comes from the direct and transfer entrants who eventually
-earned a bachelor's at `y`; it supplies the final mixture count without changing
-either group's ability distribution.
+For each final institution, Outcome Measures estimates the transfer-graduate
+share. Those estimates are scaled together to the national 801,135 transfer
+total. The remaining graduates are divided among mutually exclusive freshman
+routes using the institution's enrolled SAT and ACT submission counts. When the
+two counts overlap, they are proportionally rescaled rather than creating a
+third test-subset route. The institution score is the count-weighted mean of the
+route scores that have been measured.
 
 If a component is missing, `ability_coverage` records the represented mixture
 weight. A major currently inherits its final institution's score because IPEDS
 does not publish major-specific freshman test bars.
 
-The final age-18 scale will first rank bachelor recipients on a common ability
-scale, then prepend the no-bachelor mass. If `p` is a percentile among bachelor
-recipients, the preliminary conversion is `56.45 + 0.4355 p`.
+The final age-18 scale must place certificate and associate recipients as well as
+bachelor's recipients. The earlier shortcut of prepending one 56.45-point
+`no bachelor` mass is no longer used.
 
 ## Sources
 
@@ -142,5 +146,6 @@ python3 calibrate_tests.py
 python3 special_routes.py
 python3 origins.py
 python3 transfer.py
+python3 final_routes.py
 python3 outputs.py
 ```
