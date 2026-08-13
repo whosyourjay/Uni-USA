@@ -30,8 +30,32 @@ cohort count.
 
 SAT and ACT remain separate evidence routes because their test-taking populations
 differ. A student may submit both, so test submissions are not admission paths
-and are not added in the table. Open admission, class rank, athletics, portfolios,
-and military selection operate inside the freshman path.
+and are not added in the population table.
+
+The fall 2019 freshman pool contains 1,944,624 entrants. Institutional policy
+partitions it into test required 1,291,303 (66.40%), test recommended 100,883
+(5.19%), test considered 139,753 (7.19%), selective with no reported test role
+72,845 (3.75%), open admission 339,523 (17.46%), and a 317-person reporting
+reconciliation. These policy groups sum to the full pool but are only a coverage
+audit; the measurements and special selection mechanisms are:
+
+| Freshman mechanism | Count or benchmark | Share | Ability measure |
+| --- | ---: | ---: | --- |
+| SAT | 846,219 submitters | 43.52% | Section score bars |
+| ACT | 673,606 submitters | 34.64% | Composite score bar |
+| Open admission | 339,523 entrants | 17.46% | Unscored |
+| Automatic class rank | ≥75% of UT Austin's Texas freshman spaces | Campus benchmark | Top-6% rank |
+| Recruited athletics | 9.5% of Harvard admits | Campus benchmark | Separate adjustment |
+| Audition or portfolio | ≤88,931 exposed entrants | ≤4.57% | Unscored ceiling |
+| Service academies | 3,696 entrants | 0.19% | SAT/ACT plus screens |
+
+SAT and ACT shares overlap. Early action/decision and legacy status are preference
+overlays rather than separate measurement routes; Harvard admitted 935 of 1,950
+students early in the benchmark year.
+
+Transfer shares differ sharply by destination: 0.24% at Harvard, 0.83% at
+Stanford, 29.85% at Berkeley, 35.63% at UCLA, 35.04% at Columbia, and 91.11% at
+the University of Phoenix-Arizona.
 
 ## Outputs
 
@@ -77,6 +101,11 @@ An institution's freshman score is the median of its available SAT and ACT route
 centers. The SAT center averages the reading/writing and math median percentile
 ranks; the ACT center uses the composite median percentile rank. Both use
 percentiles among actual test takers.
+
+Across institutions with complete score bars, the SAT mixture contains 846,098
+submitters and has center 71.59; the ACT mixture contains 673,599 and has center
+76.26. The route centers are SAT/ACT 97.25/99.03 at Harvard, 96.75/98.45 at
+Stanford, 93.00/97.88 at Berkeley, and 92.25/96.48 at UCLA.
 
 The pooled transfer score is the transfer-out-weighted median of origin-school
 freshman scores. Unscored origins use their institution-type median. This first
