@@ -64,6 +64,7 @@ def annual_rows():
             percentile = calibrate_tests.interpolate(table, q25_sum)
             passing = total_test_takers * (1 - percentile / 100)
             seats = int(row["ENRLT"])
+            seats_above = 0.75 * seats
             output.append({
                 "school": school,
                 "year": year,
@@ -72,7 +73,10 @@ def annual_rows():
                 "sat_test_takers": total_test_takers,
                 "test_takers_at_or_above_q25": round(passing),
                 "first_year_seats": seats,
-                "test_takers_at_or_above_per_seat": round(passing / seats, 2),
+                "seats_at_or_above_q25": round(seats_above, 2),
+                "test_takers_at_or_above_per_seat": round(
+                    passing / seats_above, 2
+                ),
             })
     return output
 
@@ -88,6 +92,7 @@ def average_rows(rows):
             "sat_test_takers",
             "test_takers_at_or_above_q25",
             "first_year_seats",
+            "seats_at_or_above_q25",
             "test_takers_at_or_above_per_seat",
         ):
             result[field] = round(sum(row[field] for row in values) / len(values), 2)
