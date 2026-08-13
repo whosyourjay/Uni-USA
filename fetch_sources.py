@@ -63,6 +63,14 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/OM2023_Dict.zip",
         "97009ef1706981902925a589b0804e20ce78a63489471093f463b3e99ca03852",
     ),
+    "GR2023.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/GR2023.zip",
+        "f00c7140d4dbbb056043689aa82835eec5f6101b907b047a2933372505fa54bd",
+    ),
+    "GR2023_Dict.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/GR2023_Dict.zip",
+        "3af73a2b952262771f9a935e03d44f699c18cd3b00f01f713dfa298e48298f88",
+    ),
     "SAT-national-percentiles.html": (
         "https://research.collegeboard.org/reports/sat-suite/"
         "understanding-scores/sat",

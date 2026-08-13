@@ -5,9 +5,9 @@ import re
 from collections import Counter
 from html.parser import HTMLParser
 
-import ability
-import calibrate_tests
 import pathways
+import scores
+import transfer
 
 
 ROOT = pathways.ROOT
@@ -58,44 +58,44 @@ def current_split(bachelors, transfer_share):
     return round(bachelors - transfer, 3), transfer
 
 
-def route_lookup(graduates):
-    admissions = ability.load_admissions()
-    evidence = ability.ability_evidence_rows(graduates, admissions)
-    components = ability.test_component_rows(evidence)
-    percentiles = calibrate_tests.component_percentile_rows(components)
-    return {
-        (row["unitid"], row["route"]): round(
-            row["estimated_route_central_test_taker_percentile"], 3
-        )
-        for row in calibrate_tests.route_percentile_rows(percentiles)
-    }
-
-
-def route_fields(unitid, routes):
-    sat = routes.get((unitid, "SAT"), "")
-    act = routes.get((unitid, "ACT"), "")
-    labels = [name for name, value in (("SAT", sat), ("ACT", act)) if value != ""]
-    return {
-        "sat_taker_percentile_2019": sat,
-        "act_taker_percentile_2019": act,
-        "ability_status": (
-            f"partial: {' and '.join(labels)} freshman route evidence"
-            if labels
-            else "unscored"
-        ),
-    }
-
-
-def school_rows(graduates, routes):
+def school_rows(graduates, routes, transfer_score):
     rows = []
     for graduate in graduates:
+        route = scores.route_fields(graduate["unitid"], routes)
+        freshman_score = route["freshman_score"]
+        share = graduate["transfer_share_bachelors_8yr"]
         direct, transfer = current_split(
             graduate["bachelors_domestic"],
-            graduate["transfer_share_bachelors_8yr"],
+            share,
         )
+        components = []
+        if share == "":
+            if freshman_score != "":
+                components.append((freshman_score, 1))
+        else:
+            if freshman_score != "":
+                components.append((freshman_score, 1 - share))
+            components.append((transfer_score, share))
+        coverage = sum(weight for _, weight in components)
+        rough_ability = (
+            sum(value * weight for value, weight in components) / coverage
+            if coverage
+            else ""
+        )
+        if rough_ability == "":
+            status = "unscored"
+        elif share == "":
+            status = "rough: freshman score; transfer share missing"
+        elif freshman_score == "":
+            status = "rough: pooled transfer-origin score only"
+        else:
+            status = "rough: freshman plus pooled transfer-origin score"
         rows.append({
             "rank": "",
-            "ability": "",
+            "ability": round(rough_ability, 3) if rough_ability != "" else "",
+            "ability_coverage": round(coverage, 6) if coverage else "",
+            "freshman_score": freshman_score,
+            "transfer_score": transfer_score if share != "" and share > 0 else "",
             "school_id": graduate["unitid"],
             "school": graduate["institution"],
             "state": graduate["state"],
@@ -103,13 +103,20 @@ def school_rows(graduates, routes):
             "estimated_direct_bachelors": direct,
             "estimated_transfer_bachelors": transfer,
             "transfer_share": (
-                round(graduate["transfer_share_bachelors_8yr"], 6)
+                round(share, 6)
                 if graduate["transfer_share_bachelors_8yr"] != ""
                 else ""
             ),
-            **route_fields(graduate["unitid"], routes),
+            **route,
+            "ability_status": status,
         })
-    return sorted(rows, key=lambda row: (-row["bachelors"], row["school_id"]))
+    rows.sort(key=lambda row: (
+        row["ability"] == "", -(row["ability"] or 0), -row["bachelors"],
+        row["school_id"],
+    ))
+    for rank, row in enumerate((row for row in rows if row["ability"] != ""), 1):
+        row["rank"] = rank
+    return rows
 
 
 def major_completions():
@@ -144,7 +151,10 @@ def major_rows(schools, titles):
         direct, transfer = current_split(bachelors, school["transfer_share"])
         rows.append({
             "rank": "",
-            "ability": "",
+            "ability": school["ability"],
+            "ability_coverage": school["ability_coverage"],
+            "freshman_score": school["freshman_score"],
+            "transfer_score": school["transfer_score"],
             "school_id": unitid,
             "school": school["school"],
             "state": school["state"],
@@ -156,12 +166,16 @@ def major_rows(schools, titles):
             "transfer_share": school["transfer_share"],
             "sat_taker_percentile_2019": school["sat_taker_percentile_2019"],
             "act_taker_percentile_2019": school["act_taker_percentile_2019"],
-            "ability_status": school["ability_status"],
+            "freshman_score_basis": school["freshman_score_basis"],
+            "ability_status": school["ability_status"] + "; school-level",
         })
-    return sorted(
-        rows,
-        key=lambda row: (-row["bachelors"], row["school_id"], row["cip_code"]),
-    )
+    rows.sort(key=lambda row: (
+        row["ability"] == "", -(row["ability"] or 0), -row["bachelors"],
+        row["school_id"], row["cip_code"],
+    ))
+    for rank, row in enumerate((row for row in rows if row["ability"] != ""), 1):
+        row["rank"] = rank
+    return rows
 
 
 def build_tables():
@@ -171,7 +185,13 @@ def build_tables():
         pathways.load_outcomes(),
         pathways.load_enrollment(),
     )
-    schools = school_rows(graduates, route_lookup(graduates))
+    _, transfer_summary = transfer.build_transfer_tables()
+    transfer_score = next(
+        row["weighted_median_freshman_score"]
+        for row in transfer_summary
+        if row["origin_type"] == "All origins"
+    )
+    schools = school_rows(graduates, scores.route_lookup(graduates), transfer_score)
     majors = major_rows(schools, load_cip_titles())
     school_counts = {row["school_id"]: row["bachelors"] for row in schools}
     major_counts = Counter()
@@ -188,7 +208,7 @@ def main():
     pathways.write_tsv(ROOT / "majors.tsv", majors)
     print(
         f"wrote {len(schools):,} schools and {len(majors):,} school-major rows; "
-        "ability remains blank until direct and transfer routes share one scale"
+        "using separate freshman evidence and the pooled transfer-origin score"
     )
 
 

@@ -18,6 +18,8 @@ These are the complete official tables used by the analysis, not scraped samples
 | `C2023_A_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/C2023_A_Dict.zip> |
 | `OM2023.zip` | NCES IPEDS | Eight-year outcomes for the 2015–16 entering cohort, split by first-time status | <https://nces.ed.gov/ipeds/datacenter/data/OM2023.zip> |
 | `OM2023_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/OM2023_Dict.zip> |
+| `GR2023.zip` | NCES IPEDS | Transfer-out counts for first-time, full-time cohorts at origin institutions | <https://nces.ed.gov/ipeds/datacenter/data/GR2023.zip> |
+| `GR2023_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/GR2023_Dict.zip> |
 | `SAT-national-percentiles.html` | College Board | SAT section-score percentiles; the calculation uses only the User Group columns based on actual test takers | <https://research.collegeboard.org/reports/sat-suite/understanding-scores/sat> |
 | `2018-act-national-profile.pdf` | ACT | Exact ACT composite score frequencies for the 2018 tested graduating class, Table 2.1 | <https://www.act.org/content/dam/act/unsecured/documents/cccr2018/P_99_999999_N_S_N00_ACT-GCPR_National.pdf> |
 | `CIP2020-browse.html` | NCES IPEDS | Complete 2020 Classification of Instructional Programs code and title list | <https://nces.ed.gov/ipeds/cipcode/browse.aspx?y=56> |

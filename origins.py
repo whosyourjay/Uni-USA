@@ -3,8 +3,8 @@
 
 from collections import defaultdict
 
-import outputs
 import pathways
+import scores
 
 
 ORIGIN_ORDER = (
@@ -34,22 +34,6 @@ def origin_type(directory_row):
     return ORIGIN_ORDER[5]
 
 
-def route_base(rows):
-    return [
-        {
-            "unitid": row["origin_id"],
-            "institution": row["origin"],
-            "state": row["state"],
-            "bachelors_domestic": 0,
-            "direct_bachelors_8yr": 0,
-            "transfer_bachelors_8yr": 0,
-            "transfer_share_bachelors_8yr": "",
-            "direct_bachelor_rate_8yr": "",
-        }
-        for row in rows
-    ]
-
-
 def origin_rows(directory, enrollment):
     rows = []
     for unitid, levels in enrollment.items():
@@ -70,13 +54,21 @@ def origin_rows(directory, enrollment):
             "first_time_entrants_all_2023_24": entrants["all"],
         })
 
-    routes = outputs.route_lookup(route_base(rows))
+    bases = [
+        {
+            "unitid": row["origin_id"],
+            "institution": row["origin"],
+            "state": row["state"],
+        }
+        for row in rows
+    ]
+    routes = scores.route_lookup(bases)
     for row in rows:
-        row.update(outputs.route_fields(row["origin_id"], routes))
-        if row["ability_status"] == "unscored" and row["origin_type"] in {
-            ORIGIN_ORDER[1], ORIGIN_ORDER[2], ORIGIN_ORDER[3], ORIGIN_ORDER[4]
-        }:
-            row["ability_status"] = "unscored: broad-access model pending"
+        row.update(scores.route_fields(row["origin_id"], routes))
+        row["ability"] = row["freshman_score"]
+        row["ability_status"] = (
+            "freshman SAT/ACT proxy" if row["ability"] != "" else "unscored"
+        )
     return sorted(
         rows,
         key=lambda row: (
