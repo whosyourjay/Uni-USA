@@ -8,9 +8,9 @@ Each item ends with a concrete intermediate output. Historical extensions remain
 
 IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entire admitted pool. SAT and ACT are separate measurement routes even when the same student submitted both. Test-policy categories are a secondary coverage audit, not routes. Actual non-test mechanisms must be named and modeled separately.
 
-- [x] Build one exhaustive annual-flow table. Subtract transfers before assigning the remaining bachelor's recipients to SAT, ACT, open admission, automatic rank, athletics, audition/portfolio, service academy, or school-record review. Keep certificates and associate's degrees out of the no-award residual.
+- [x] Parse 2019–20 CDS C10 data for the ten highest freshman-score schools and the next ten highest-ability schools; report missing publishers instead of expanding the sample.
 
-- [ ] Get data on class-rank thresholds and estimate ability from this
+- [ ] Split Carnegie Mellon into its separately admitted undergraduate colleges when comparable college-level SAT/ACT/rank data are available; leave Harvey Mudd institution-wide because students enter before declaring a major.
 
 - [ ] Get data on major-specific thresholds for open universities
 

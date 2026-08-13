@@ -26,5 +26,7 @@ These are the fixed source tables used by the analysis. The files are downloaded
 | `2017-total-group-sat-report.pdf`–`2019-total-group-sat-report.pdf` | College Board | Annual redesigned-SAT test-taker totals used in the q25-bar/seat diagnostic | <https://reports.collegeboard.org/sat-suite-program-results/data-archive> |
 | `2018-act-national-profile.pdf` | ACT | Exact ACT composite score frequencies for the 2018 tested graduating class, Table 2.1 | <https://www.act.org/content/dam/act/unsecured/documents/cccr2018/P_99_999999_N_S_N00_ACT-GCPR_National.pdf> |
 | `CIP2020-browse.html` | NCES IPEDS | Complete 2020 Classification of Instructional Programs code and title list | <https://nces.ed.gov/ipeds/cipcode/browse.aspx?y=56> |
+| `common-data-set-repository.html`, `cds-2019/` | Institution-published Common Data Sets, indexed by College Transitions | Standardized 2019–20 C10 freshman class-rank distributions | <https://www.collegetransitions.com/dataverse/common-data-set-repository/> |
 
 Run `python3 fetch_sources.py` to verify or restore the local copies. The downloader pins the SHA-256 digest of every input. `calibrate_tests.py` uses `pdftotext -layout` to parse the ACT table.
+Run `python3 class_rank.py --fetch` separately to collect and parse the fixed 20-school class-rank sample.

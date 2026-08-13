@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Build the canonical school and major tables for the endpoint model."""
 
+import argparse
 import re
 from collections import Counter
 from html.parser import HTMLParser
 
 import ability
+import class_rank
 import final_routes
 import pathways
 import scores
@@ -23,6 +25,7 @@ SCHOOL_COLUMNS = (
     "actnum_2019",
     "sat_taker_percentile_2019",
     "act_taker_percentile_2019",
+    "class_rank_percentile_2019",
     "transfer_share",
 )
 MAJOR_COLUMNS = ("school", "major") + SCHOOL_COLUMNS[1:]
@@ -132,6 +135,7 @@ def school_rows(graduates, admissions, routes, transfer_score, institution_route
             "actnum_2019": (
                 pathways.number(admission.get("ACTNUM")) if admission else ""
             ),
+            "class_rank_percentile_2019": "",
             "transfer_score": transfer_score if share != "" and share > 0 else "",
             "school_id": graduate["unitid"],
             "school": graduate["institution"],
@@ -223,6 +227,9 @@ def major_rows(schools, titles):
             "transfer_share": school["transfer_share"],
             "sat_taker_percentile_2019": school["sat_taker_percentile_2019"],
             "act_taker_percentile_2019": school["act_taker_percentile_2019"],
+            "class_rank_percentile_2019": school[
+                "class_rank_percentile_2019"
+            ],
             "freshman_score_basis": school["freshman_score_basis"],
             "ability_status": school["ability_status"] + "; school-level",
         })
@@ -262,6 +269,15 @@ def build_tables():
         transfer_score,
         institution_routes,
     )
+    target_ids = {
+        row["school_id"] for row in class_rank.top_sample_rows(detailed_schools)
+    }
+    rank_scores = class_rank.score_lookup(graduates, target_ids)
+    for row in detailed_schools:
+        if row["school_id"] in rank_scores:
+            row["class_rank_percentile_2019"] = round(
+                rank_scores[row["school_id"]]["class_rank_mean"], 2
+            )
     detailed_majors = major_rows(detailed_schools, load_cip_titles())
     school_counts = {
         row["school_id"]: row["bachelors"] for row in detailed_schools
@@ -283,13 +299,17 @@ def build_tables():
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--schools-only", action="store_true")
+    args = parser.parse_args()
     schools, majors = build_tables()
     pathways.write_tsv(ROOT / "schools.tsv", schools)
-    pathways.write_tsv(ROOT / "majors.tsv", majors)
-    print(
-        f"wrote {len(schools):,} schools and {len(majors):,} school-major rows; "
-        "using separate freshman evidence and the pooled transfer-origin score"
-    )
+    if not args.schools_only:
+        pathways.write_tsv(ROOT / "majors.tsv", majors)
+    target = f"{len(schools):,} schools"
+    if not args.schools_only:
+        target += f" and {len(majors):,} school-major rows"
+    print(f"wrote {target}; using separate freshman evidence and the pooled transfer-origin score")
 
 
 if __name__ == "__main__":
