@@ -127,32 +127,36 @@ def graduate_rows(directory, completions, outcomes, enrollment):
     return sorted(rows, key=lambda row: (row["institution"], row["unitid"]))
 
 
-def national_rows(population, rows, completions):
+def cohort_pathway_rows(population, rows):
     domestic = sum(row["bachelors_domestic"] for row in rows)
-    all_awards = sum(values["bachelors_all"] for values in completions.values())
     direct = sum(row["direct_bachelors_8yr"] for row in rows)
     transfer = sum(row["transfer_bachelors_8yr"] for row in rows)
-    covered = sum(row["bachelors_domestic"] for row in rows
-                  if row["direct_bachelors_8yr"] + row["transfer_bachelors_8yr"])
-    non_four = sum(row["bachelors_domestic"] for row in rows
-                   if row["institution_level"] != "four-or-more-year")
+    if domestic > population:
+        raise ValueError("Bachelor flow exceeds the age-18 population")
+    if direct + transfer == 0:
+        raise ValueError("No graduate route observations")
+
+    # First subtract the bachelor flow from the complete age-18 population. Then
+    # split only the bachelor portion using the Outcome Measures graduate mix.
+    no_bachelor = population - domestic
+    transfer_estimate = round(domestic * transfer / (direct + transfer))
+    direct_estimate = domestic - transfer_estimate
     values = [
-        ("age_18_resident_population", population, "Census resident population, July 1, 2023"),
-        ("bachelors_all", all_awards, "2022-23 bachelor's degrees, all citizenships"),
-        ("bachelors_domestic", domestic, "bachelor's total less nonresident aliens"),
-        ("bachelors_share_age18", domestic / population, "final-degree flow / age-18 cohort"),
-        ("no_domestic_bachelor_constant", 1 - domestic / population, "one minus final-degree flow bridge"),
-        ("bachelor_awarding_institutions_all", len(completions), "institutions with at least one bachelor's degree"),
-        ("bachelor_awarding_institutions_domestic", len(rows), "institutions with at least one domestic bachelor's degree"),
-        ("non_four_year_classified_bachelors", non_four, "domestic awards outside ICLEVEL=1"),
-        ("non_four_year_classified_share", non_four / domestic, "share excluded by a four-year-only filter"),
-        ("om_direct_bachelors", direct, "first-time 2015-16 entrants earning a bachelor's there by 2023"),
-        ("om_transfer_bachelors", transfer, "non-first-time 2015-16 entrants earning a bachelor's there by 2023"),
-        ("om_transfer_share_bachelors", transfer / (direct + transfer), "graduate route mixture, all citizenships"),
-        ("annual_degrees_at_om_covered_institutions", covered / domestic, "coverage of institution-level route estimates"),
+        ("No bachelor's degree", no_bachelor, "residual"),
+        ("Bachelor's, no prior college on entry to final institution", direct_estimate,
+         "IPEDS Outcome Measures route share"),
+        ("Bachelor's, prior college before final institution", transfer_estimate,
+         "IPEDS Outcome Measures route share"),
     ]
-    return [{"metric": key, "value": value, "definition": definition}
-            for key, value, definition in values]
+    return [
+        {
+            "path": path,
+            "people": people,
+            "share_age18": people / population,
+            "construction": construction,
+        }
+        for path, people, construction in values
+    ]
 
 
 def level_rows(rows):
@@ -192,8 +196,8 @@ def main():
     completions = load_completions()
     rows = graduate_rows(load_directory(), completions, load_outcomes(), load_enrollment())
     write_tsv(DERIVED / "institution_graduates.tsv", rows)
-    write_tsv(DERIVED / "national_graduates.tsv",
-              national_rows(population, rows, completions))
+    write_tsv(DERIVED / "cohort_pathways.tsv",
+              cohort_pathway_rows(population, rows))
     write_tsv(DERIVED / "graduate_pathways_by_level.tsv", level_rows(rows))
     print(f"wrote {len(rows):,} bachelor-awarding institutions to {DERIVED}")
 

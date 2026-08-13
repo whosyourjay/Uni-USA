@@ -19,6 +19,10 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/ADM2023.zip",
         "670ecc7c4313f044dcdf740a42ef10c6d2927eb9f890fb405e3569c8442aca27",
     ),
+    "ADM2023_Dict.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2023_Dict.zip",
+        "d80bf7c781e39f7cbcb02f10f4d17b0c2c0e16786ea686217d12344c6167803d",
+    ),
     "EFFY2024.zip": (
         "https://nces.ed.gov/ipeds/datacenter/data/EFFY2024.zip",
         "fff28cbfaecbddd871f64dc958abbbd967f750ead7c699506efb47dc2ce8366f",

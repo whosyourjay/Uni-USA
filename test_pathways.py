@@ -49,14 +49,19 @@ class GraduatePathwayTests(unittest.TestCase):
         )
 
     def test_national_bridge(self):
-        metrics = {
-            row["metric"]: row["value"]
-            for row in pathways.national_rows(
-                self.population, self.rows, self.completions
-            )
-        }
-        self.assertAlmostEqual(metrics["bachelors_share_age18"], 0.4354674772)
-        self.assertAlmostEqual(metrics["om_transfer_share_bachelors"], 0.4221957244)
+        rows = pathways.cohort_pathway_rows(self.population, self.rows)
+        counts = {row["path"]: row["people"] for row in rows}
+        self.assertEqual(counts["No bachelor's degree"], 2_459_942)
+        self.assertEqual(
+            counts["Bachelor's, no prior college on entry to final institution"],
+            1_096_408,
+        )
+        self.assertEqual(
+            counts["Bachelor's, prior college before final institution"],
+            801_135,
+        )
+        self.assertEqual(sum(counts.values()), self.population)
+        self.assertAlmostEqual(sum(row["share_age18"] for row in rows), 1)
 
 
 if __name__ == "__main__":
