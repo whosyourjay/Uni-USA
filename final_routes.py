@@ -25,7 +25,7 @@ UT_AUSTIN_UNITID = 228778
 HARVARD_UNITID = 166027
 
 
-def freshman_route_shares(unitid, admission, characteristic):
+def freshman_route_shares(unitid, admission, characteristic, portfolio_share=0):
     """Assign every non-transfer freshman to exactly one route.
 
     IPEDS counts SAT and ACT submissions, not unique tested students.  We retain
@@ -41,10 +41,11 @@ def freshman_route_shares(unitid, admission, characteristic):
     special = {}
     if unitid == UT_AUSTIN_UNITID:
         special["Automatic class-rank guarantee"] = 0.75
-    elif unitid == HARVARD_UNITID:
+    if unitid == HARVARD_UNITID:
         special["Recruited athletics"] = 0.095
-    elif pathways.number(admission.get("ADMCON6")) == 1:
-        special["Audition or portfolio"] = 1.0
+    if pathways.number(admission.get("ADMCON6")) == 1:
+        available = 1 - sum(special.values())
+        special["Audition or portfolio"] = min(portfolio_share, available)
     remaining = 1 - sum(special.values())
     if remaining == 0:
         return special
@@ -84,6 +85,7 @@ def institution_route_rows(graduates, admissions, characteristics, population):
         for row in graduates
     }
     scale = target / sum(raw_transfer.values())
+    portfolio_counts = portfolio_bachelor_counts()
 
     output = []
     for graduate in graduates:
@@ -94,6 +96,7 @@ def institution_route_rows(graduates, admissions, characteristics, population):
             unitid,
             admissions.get(unitid, {}),
             characteristics.get(unitid, {}),
+            portfolio_counts.get(unitid, 0) / graduate["bachelors_domestic"],
         )
         for route, share in route_shares.items():
             output.append({
@@ -115,6 +118,24 @@ def institution_route_rows(graduates, admissions, characteristics, population):
             "share_institution_bachelors": transfer_count / graduate["bachelors_domestic"],
         })
     return output
+
+
+def portfolio_bachelor_counts():
+    """Domestic architecture and visual/performing-arts bachelor's awards."""
+    totals = defaultdict(int)
+    for row in pathways.zip_rows("C2023_A.zip"):
+        cip = row["CIPCODE"].strip()
+        if (
+            pathways.number(row["AWLEVEL"]) == 5
+            and pathways.number(row["MAJORNUM"]) == 1
+            and cip != "99"
+            and cip.split(".", 1)[0] in {"04", "50"}
+        ):
+            totals[pathways.number(row["UNITID"])] += (
+                pathways.number(row["CTOTALT"])
+                - pathways.number(row["CNRALT"])
+            )
+    return totals
 
 
 def national_route_rows(institution_rows, graduates, population):

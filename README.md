@@ -17,24 +17,24 @@ credentials are kept instead of being buried in `No bachelor's`. Within the
 bachelor rows, anyone who transfers is removed from their original freshman
 route and appears only in `Transfer`.
 
-| Path | People | Share of age 18 | Ability measure |
-| --- | ---: | ---: | --- |
-| No postsecondary award | 426,832 | 9.80% | Schooling history not yet separated |
-| Certificate under 12 weeks | 104,149 | 2.39% | Institution model pending |
-| Certificate, 12 weeks–1 year | 501,753 | 11.51% | Institution model pending |
-| Certificate, 1–2 years | 453,093 | 10.40% | Institution model pending |
-| Associate's degree | 950,699 | 21.82% | Two-year institution model pending |
-| Certificate, 2–4 years | 23,416 | 0.54% | Institution model pending |
-| SAT | 477,727 | 10.96% | SAT-taker percentile; mean 73.13 |
-| ACT | 396,640 | 9.10% | ACT-taker percentile; mean 76.86 |
-| Open admission | 41,181 | 0.95% | Not yet scored |
-| Automatic class-rank guarantee | 5,492 | 0.13% | UT top-6% proxy; center 97.00 |
-| Recruited athletics | 157 | <0.01% | Harvard benchmark only; adjustment pending |
-| Audition or portfolio | 57,074 | 1.31% | Required-institution proxy; adjustment pending |
-| Service-academy nomination | 3,076 | 0.07% | Academy tests and screens; mean 87.58 |
-| School-record review without test evidence | 115,061 | 2.64% | GPA/rank calibration pending |
-| Transfer | 801,135 | 18.39% | Origin mixture; provisional mean 65.63 |
-| **Total** | **4,357,485** | **100.00%** |  |
+| Path | People | Share of age 18 |
+| --- | ---: | ---: |
+| No postsecondary award | 426,832 | 9.80% |
+| Certificate under 12 weeks | 104,149 | 2.39% |
+| Certificate, 12 weeks–1 year | 501,753 | 11.51% |
+| Certificate, 1–2 years | 453,093 | 10.40% |
+| Associate's degree | 950,699 | 21.82% |
+| Certificate, 2–4 years | 23,416 | 0.54% |
+| SAT | 505,227 | 11.59% |
+| ACT | 409,306 | 9.39% |
+| Open admission | 41,181 | 0.95% |
+| Automatic class-rank guarantee | 5,492 | 0.13% |
+| Recruited athletics | 157 | <0.01% |
+| Audition or portfolio | 9,776 | 0.22% |
+| Service-academy nomination | 3,076 | 0.07% |
+| GPA/rank | 122,193 | 2.80% |
+| Transfer | 801,135 | 18.39% |
+| **Total** | **4,357,485** | **100.00%** |
 
 Credential counts are 2022–23 IPEDS awards less nonresident aliens. The residual
 is calculated only after subtracting certificates, associate's degrees, and
@@ -58,7 +58,7 @@ rounds and legacy are overlays, not routes.
 
 ## Outputs
 
-- `schools.tsv` — 2,356 final institutions, ranked where a rough score is available
+- `schools.tsv` — 2,356 final institutions, ordered by rough ability
 - `majors.tsv` — 64,314 institution-major pairs; major scores currently inherit
   the institution score
 - `derived/final_admission_paths.tsv` — the exhaustive national table above

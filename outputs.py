@@ -14,6 +14,20 @@ import transfer
 
 ROOT = pathways.ROOT
 CIP_BROWSE = pathways.SOURCES / "CIP2020-browse.html"
+SCHOOL_COLUMNS = (
+    "school",
+    "ability",
+    "bachelors",
+    "freshman_score",
+    "satnum_2019",
+    "actnum_2019",
+    "sat_taker_percentile_2019",
+    "act_taker_percentile_2019",
+    "transfer_share",
+)
+MAJOR_COLUMNS = ("school", "major") + SCHOOL_COLUMNS[1:]
+
+
 class CIPTitleParser(HTMLParser):
     """Read six-digit CIP labels from the official NCES browse tree."""
 
@@ -60,7 +74,7 @@ def current_split(bachelors, transfer_share):
     return round(bachelors - transfer, 3), transfer
 
 
-def school_rows(graduates, routes, transfer_score, institution_routes):
+def school_rows(graduates, admissions, routes, transfer_score, institution_routes):
     paths_by_id = {}
     for row in institution_routes:
         paths_by_id.setdefault(row["unitid"], {})[row["route"]] = row[
@@ -69,6 +83,7 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
     rows = []
     for graduate in graduates:
         route = scores.route_fields(graduate["unitid"], routes)
+        admission = admissions.get(graduate["unitid"])
         paths = paths_by_id[graduate["unitid"]]
         bachelors = graduate["bachelors_domestic"]
         transfer_count = paths["Transfer"]
@@ -110,7 +125,13 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
             "ability": round(rough_ability, 3) if rough_ability != "" else "",
             "ability_coverage": round(coverage, 6) if coverage else "",
             **route,
-            "freshman_score": freshman_score,
+            "freshman_score": round(freshman_score, 2) if freshman_score != "" else "",
+            "satnum_2019": (
+                pathways.number(admission.get("SATNUM")) if admission else ""
+            ),
+            "actnum_2019": (
+                pathways.number(admission.get("ACTNUM")) if admission else ""
+            ),
             "transfer_score": transfer_score if share != "" and share > 0 else "",
             "school_id": graduate["unitid"],
             "school": graduate["institution"],
@@ -188,6 +209,8 @@ def major_rows(schools, titles):
             "ability": school["ability"],
             "ability_coverage": school["ability_coverage"],
             "freshman_score": school["freshman_score"],
+            "satnum_2019": school["satnum_2019"],
+            "actnum_2019": school["actnum_2019"],
             "transfer_score": school["transfer_score"],
             "school_id": unitid,
             "school": school["school"],
@@ -225,25 +248,37 @@ def build_tables():
         for row in transfer_summary
         if row["origin_type"] == "All origins"
     )
+    admissions = ability.load_admissions()
     institution_routes = final_routes.institution_route_rows(
         graduates,
-        ability.load_admissions(),
+        admissions,
         ability.load_characteristics(),
         pathways.load_population(),
     )
-    schools = school_rows(
+    detailed_schools = school_rows(
         graduates,
+        admissions,
         scores.route_lookup(graduates),
         transfer_score,
         institution_routes,
     )
-    majors = major_rows(schools, load_cip_titles())
-    school_counts = {row["school_id"]: row["bachelors"] for row in schools}
+    detailed_majors = major_rows(detailed_schools, load_cip_titles())
+    school_counts = {
+        row["school_id"]: row["bachelors"] for row in detailed_schools
+    }
     major_counts = Counter()
-    for row in majors:
+    for row in detailed_majors:
         major_counts[row["school_id"]] += row["bachelors"]
     if school_counts != major_counts:
         raise ValueError("School and major domestic bachelor counts do not reconcile")
+    schools = [
+        {column: row[column] for column in SCHOOL_COLUMNS}
+        for row in detailed_schools
+    ]
+    majors = [
+        {column: row[column] for column in MAJOR_COLUMNS}
+        for row in detailed_majors
+    ]
     return schools, majors
 
 
