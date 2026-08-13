@@ -6,7 +6,7 @@ The goal is to estimate the distribution of academic ability at age 18 condition
 
 The denominator is every U.S. resident at age 18, including people who never attend college. The unit being ranked is the **final degree institution**, not the institution of first admission.
 
-This pass is deliberately a single recent cross-section: 2023 population, 2022–23 bachelor's awards, fall 2023 admissions, and the Outcome Measures release available in 2023. Vintage alignment is deferred in [`TODO.md`](TODO.md).
+This pass uses one outcome year and one admissions baseline. Final-institution weights are 2022–23 bachelor's awards, the population denominator is 2023, and transfer shares come from the Outcome Measures release available in 2023. Freshman admission evidence is **fall 2019**, the last entering class wholly before COVID-era test-optional and test-blind changes. It is also the conventional four-year predecessor of the 2022–23 graduating class. Later and earlier admissions vintages are deferred in [`TODO.md`](TODO.md).
 
 ## Pathways to the final degree
 
@@ -27,22 +27,25 @@ The institution universe comes from actual 2022–23 bachelor's completions, wit
 
 The route mixture varies too much to substitute a national constant. Among the 2015–16 entering cohorts who earned a bachelor's there within eight years, the transfer share is 0.24% at Harvard, 0.83% at Stanford, 29.85% at Berkeley, 35.63% at UCLA, 35.04% at Columbia, and 91.11% at the University of Phoenix-Arizona. These are pathway shares, not ability estimates.
 
-## Admission routes into the institution
+## Freshman paths into the institution
 
-The first row above is not itself an admissions route. U.S. institutions judge the same freshman through several channels, so unlike a centralized allocation system the rows below are deliberately **not additive**.
+The 2023 admissions cross-section is unsuitable for the ability model: widespread pandemic-era test-optional policies and permanent test-blind policies make an enormous unscored remainder. The fall-2019 baseline produces the following **additive** decomposition of all 1,944,624 first-time degree-seeking entrants at institutions that currently award bachelor's degrees.
 
-| Route | How it works | Fall 2023 enrolled submitters | Share of the reporting pool | Ability evidence |
-|---|---|---:|---:|---|
-| SAT | SAT submitted; institution also applies its other criteria | 369,411 | 22.12% | 25th, 50th and 75th percentiles |
-| ACT | ACT submitted; institution also applies its other criteria | 316,572 | 18.96% | 25th, 50th and 75th percentiles |
-| No reported SAT/ACT | Transcript/GPA and institution-specific review, or test-blind admission | 989,991–1,130,419 | 59.29%–67.70% | No common national score |
-| Open admission | Published entrance requirements rather than selective review | Not yet counted | — | No comparable admission cutoff |
-| Transfer | Prior-college GPA, transferable courses/credits, prerequisites and sometimes essays | 801,135 estimated final graduates | 18.39% of age 18 | Origin ability plus later college evidence |
-| Other special channels | Portfolios/auditions, recruited athletics, service-academy nomination and other institutional programs | Not separately counted | — | Route-specific or none |
+| Admission path | Fall 2019 entrants | Share of all first-time entrants | Ability evidence |
+|---|---:|---:|---|
+| Selective: admission test required | 1,291,303 | 66.40% | Required test; institution-level SAT and/or ACT distributions where published |
+| Selective: admission test recommended | 100,883 | 5.19% | Submitted test where observed, plus the institution's enumerated school criteria |
+| Selective: admission test considered but not required | 139,753 | 7.19% | Submitted test where observed, plus the institution's enumerated school criteria |
+| Selective: admission test neither required nor recommended | 72,845 | 3.75% | School criteria enumerated separately; no common admission test |
+| Open admission | 339,523 | 17.46% | No subjective selection cutoff; estimate the entrant distribution from origin populations |
 
-The first three rows cover 1,669,785 enrolled first-time students at the 1,708 bachelor's institutions in the IPEDS admissions reporting universe. A student can report both tests, but IPEDS does not publish that overlap. Therefore SAT and ACT stay as separate routes, while the no-test count is an interval: its lower end assumes no overlap and its upper end assumes maximum overlap. There are no SAT-only, ACT-only, or both-test pseudo-routes.
+Only 16.13% are in the three selective paths without a required common test. A 317-person (0.02%) difference between the admissions and fall-enrollment reporting frames is retained in the generated reconciliation table rather than assigned to a path.
 
-Non-test review is not a single mechanism. Entrant-weighting the IPEDS policies shows that secondary-school GPA was required or considered for 97.87% of this reporting pool and the school record for 97.65%. The same official table separately records rank, college-prep curriculum, recommendations, formal competencies/portfolios, English and other tests, work experience, essays, and legacy. [`derived/freshman_admission_considerations.tsv`](derived/freshman_admission_considerations.tsv) retains all of those non-exclusive bases. It does not pretend that the policy table says which criterion caused an individual admission.
+SAT and ACT remain distinct, non-exclusive measurement routes. Among the complete entrant universe, 846,219 submitted SAT scores (43.52%) and 673,606 submitted ACT scores (34.64%). The same student can appear in both figures, so these two counts must not be added and there are no SAT-only, ACT-only, or test-subset rows. IPEDS 2019 publishes the 25th and 75th percentile of each SAT section and the ACT composite. [`derived/freshman_test_route_ability.tsv`](derived/freshman_test_route_ability.tsv) reconstructs each native-scale distribution without inventing an unpublished median or adding marginal SAT section quantiles as though they were total-score quantiles.
+
+The policy paths above are additive, but the criteria used inside selective review are not. [`derived/freshman_admission_considerations.tsv`](derived/freshman_admission_considerations.tsv) separately records GPA, rank, school record, college-preparatory curriculum, recommendations, formal competencies/portfolios, English tests, and other tests as required, recommended, considered, or neither. That table exposes the remaining subjective mechanisms instead of compressing them into a “transcript/GPA and institution-specific review” bucket.
+
+Transfer is not in this freshman table. It contributes an estimated 801,135 final graduates, or 18.39% of the age-18 population, and is modeled from origin institutions, transfer GPA/coursework, and destination-specific completion rather than from the final institution's freshman distribution.
 
 [`derived/institution_graduates.tsv`](derived/institution_graduates.tsv) contains the same calculation for every final institution. Its core columns are:
 
@@ -64,15 +67,16 @@ where `t_y` is the graduate transfer share above. The national distribution then
 
 The evidence has to follow that equation:
 
-1. **No-prior-college graduates.** `ability.py` retains SAT and ACT as separate native-scale routes, including each route's quartiles and submitter count. At least one complete test distribution is available at institutions producing 1,285,958 (67.77%) of domestic bachelor's awards and 822,070 (77.18%) of observed no-prior-college graduates. A later common ability scale will cross-calibrate the two routes; it will not collapse the route labels or count dual submitters twice.
+1. **No-prior-college graduates.** `ability.py` retains SAT and ACT as separate native-scale routes, including each route's two published quartiles and submitter count. At least one complete fall-2019 test distribution is available at institutions producing 1,499,079 (79.00%) of current domestic bachelor's awards. The current reconstruction puts 25%, 50%, and 25% uniform mass in the three bounded intervals defined by the scale endpoints and the reported quartiles. A later common ability scale will cross-calibrate the two routes; it will not collapse the route labels or count dual submitters twice.
 2. **Transfer graduates.** A final institution's freshman scores do not describe this group. Use a national longitudinal bachelor-recipient sample to estimate pre-college ability differences between direct and transfer graduates by destination type, then apply institution-specific transfer shares. Transfer-dominant institutions without a meaningful freshman intake will necessarily have wider uncertainty.
-3. **No reported test.** SAT/ACT submitters are selected even before test-optional admission. High-school record evidence and test-policy status must enter the model; unreported students cannot simply receive a reported-test median.
+3. **Selective paths without a required test.** These are now isolated as 16.13% of first-time entrants, split by recommended, considered, and neither-required-nor-recommended policy. They require school-record calibration and explicit special-channel adjustments; they cannot simply receive a test-submitter distribution.
+4. **Open admission.** This 17.46% path is not subjective admission. Its age-18 ability distribution must be estimated from the eligible origin population and actual enrollment selection, with wider uncertainty than a published score distribution.
 
-The active pass will first produce a current-year estimate from these national tables. Historical cohort alignment and a longitudinal transfer bridge are recorded as later upgrades rather than blocking the cross-section.
+The active pass will first produce one endpoint-year estimate from these national tables. Additional admissions vintages and a longitudinal transfer bridge are recorded as later upgrades rather than blocking this estimate.
 
 ## Reproduction
 
-Downloaded inputs and generated tables stay local and are ignored by Git. [`sources/README.md`](sources/README.md) lists the nine complete Census/IPEDS files and their official URLs; `fetch_sources.py` pins every SHA-256 digest.
+Downloaded inputs and generated tables stay local and are ignored by Git. [`sources/README.md`](sources/README.md) lists the complete Census/IPEDS files and their official URLs; `fetch_sources.py` pins every SHA-256 digest.
 
 ```sh
 python3 fetch_sources.py
@@ -86,7 +90,9 @@ Primary generated tables:
 - `derived/cohort_pathways.tsv`
 - `derived/institution_graduates.tsv`
 - `derived/institution_ability_evidence.tsv`
-- `derived/freshman_ability_routes.tsv`
-- `derived/national_freshman_routes.tsv`
+- `derived/freshman_admission_paths.tsv`
+- `derived/freshman_test_routes.tsv`
+- `derived/national_test_routes.tsv`
+- `derived/freshman_test_route_ability.tsv`
 - `derived/freshman_admission_considerations.tsv`
 - `derived/graduate_pathways_by_level.tsv`

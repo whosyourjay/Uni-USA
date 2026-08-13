@@ -1,30 +1,32 @@
 # TODO
 
-The endpoint is the age-18 ability distribution conditional on the institution that ultimately awards the bachelor's degree. Work on one recent cross-section first: 2023 population, 2022–23 degrees, fall 2023 entrants, and the transfer information available in 2023.
+The endpoint is the age-18 ability distribution conditional on the institution that ultimately awards the bachelor's degree. Work on one endpoint cross-section first: 2023 population, 2022–23 degrees, fall 2019 freshman-admission evidence, and the transfer information available in 2023. Fall 2019 is the final pre-COVID entering class and the conventional four-year predecessor of the 2022–23 graduating class.
 
 Each item ends with a concrete intermediate output. Historical extensions remain deferred until the current cross-section works.
 
 ## 1. Separate and score freshman-admission routes
 
-IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entire admitted pool. SAT and ACT are separate measurement routes even when the same student submitted both. The remaining students are admitted on school records or other institution-specific evidence and cannot inherit a test score by fiat.
+IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entire admitted pool. SAT and ACT are separate measurement routes even when the same student submitted both. The additive admission paths are test required, test recommended, test considered but not required, test neither required nor recommended, and open admission; individual review criteria remain separate non-exclusive evidence fields.
 
-- [x] Inventory the nationally reported routes without manufacturing SAT-only/ACT-only/both-test categories. Keep SAT and ACT as separate rows and bound the aggregate no-reported-test group from the unknown overlap.
+- [x] Inventory additive fall-2019 entry paths without manufacturing SAT-only/ACT-only/both-test categories. Count open admission from institutional characteristics and enrollment rather than burying it in an unreported-test residual.
 
-- [x] Inventory the other IPEDS admissions bases: school GPA, rank, transcript, college-prep curriculum, recommendations, formal competencies/portfolios, English and other tests, work experience, essay, and legacy.
+- [x] Inventory the other fall-2019 IPEDS admissions bases: school GPA, rank, transcript, college-prep curriculum, recommendations, formal competencies/portfolios, English tests, and other tests.
 
-- [ ] Reconstruct a separate SAT distribution for each institution from its 25th, 50th, and 75th percentiles rather than ranking institutions by the median alone.
+- [x] Reconstruct separate SAT-section distributions for each institution from the published 25th and 75th percentiles. Do not invent a median or add marginal section quantiles as if they were total-score quantiles.
 
-- [ ] Reconstruct a separate ACT distribution in the same way. Do not average the native SAT and ACT numbers or use their sum as an entrant count.
+- [x] Reconstruct a separate ACT-composite distribution in the same way. Do not average the native SAT and ACT numbers or use their sum as an entrant count.
 
 - [ ] Cross-calibrate the two test routes to a common age-18 percentile using national test-taker distributions and institutions reporting both. Preserve the route-specific estimates and disagreement after calibration.
 
-- [ ] Model the no-reported-test route from nationally comparable school-record evidence. Treat test-blind institutions separately from test-optional institutions and propagate the SAT/ACT-overlap interval.
+- [ ] Model the 16.13% in selective paths without a required test from nationally comparable school-record evidence. Keep recommended, considered-but-not-required, and neither-required-nor-recommended separate; do not recreate a generic no-test bucket.
 
-- [ ] Quantify special freshman channels missing from the IPEDS policy table: recruited athletics, auditions/portfolios beyond the generic competency flag, service-academy nominations, early-decision preferences, guaranteed admission, and other school-specific programs. Keep an unknown residual where no national count exists.
+- [ ] Model the 17.46% open-admission path from eligible origin populations and observed enrollment selection. It has no subjective admission cutoff and should not be pooled with selective non-test review.
+
+- [ ] Quantify special freshman channels missing from the fall-2019 IPEDS policy table: recruited athletics, auditions/portfolios beyond the generic competency flag, service-academy nominations, early-decision preferences, guaranteed admission, essays, legacy, work experience, and other school-specific programs. Keep an unknown residual where no national count exists.
 
 - [ ] Weight institutions by current first-time domestic entrants to construct the national freshman pool, then validate by hiding score-reporting institutions. Report error separately for selective, broad-access, test-blind, and open-admission schools.
 
-**Outputs:** `derived/freshman_ability_routes.tsv` (current inventory) and `derived/first_time_entrant_ability.tsv` (common-scale distributions with route-specific components).
+**Outputs:** `derived/freshman_admission_paths.tsv`, `derived/freshman_test_routes.tsv`, `derived/freshman_test_route_ability.tsv`, and `derived/first_time_entrant_ability.tsv` (common-scale distributions with route-specific components).
 
 ## 2. Extend the origin-school model beyond bachelor's institutions
 

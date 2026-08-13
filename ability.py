@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Build 2023 freshman-admission route and ability evidence."""
+"""Build pre-COVID freshman-admission paths and test evidence.
+
+The final-institution weights remain the 2022-23 domestic bachelor's awards.
+Fall 2019 is the admissions baseline: it is the last entering class unaffected
+by pandemic-era test-optional and test-blind changes, and it overlaps naturally
+with the students completing bachelor's degrees four years later.
+"""
 
 from pathlib import Path
 
@@ -7,8 +13,9 @@ import pathways
 
 ROOT = Path(__file__).parent
 DERIVED = ROOT / "derived"
-SAT_FIELDS = ("SATVR25", "SATVR50", "SATVR75", "SATMT25", "SATMT50", "SATMT75")
-ACT_FIELDS = ("ACTCM25", "ACTCM50", "ACTCM75")
+ADMISSION_YEAR = 2019
+SAT_FIELDS = ("SATVR25", "SATVR75", "SATMT25", "SATMT75")
+ACT_FIELDS = ("ACTCM25", "ACTCM75")
 CONSIDERATIONS = {
     "ADMCON1": "Secondary-school GPA",
     "ADMCON2": "Secondary-school rank",
@@ -19,15 +26,36 @@ CONSIDERATIONS = {
     "ADMCON7": "Admission tests",
     "ADMCON8": "English-proficiency test",
     "ADMCON9": "Other test",
-    "ADMCON10": "Work experience",
-    "ADMCON11": "Personal statement or essay",
-    "ADMCON12": "Legacy status",
 }
 CONSIDERATION_STATUS = {
     1: "required",
-    5: "considered if submitted",
-    3: "not considered",
+    2: "recommended",
+    5: "considered but not required",
+    3: "neither required nor recommended",
 }
+ADMISSION_PATHS = {
+    1: (
+        "Selective: admission test required",
+        "SAT or ACT distribution where published; other required tests remain explicit",
+    ),
+    2: (
+        "Selective: admission test recommended",
+        "Test evidence when submitted plus separately reported school criteria",
+    ),
+    5: (
+        "Selective: admission test considered but not required",
+        "Test evidence when submitted plus separately reported school criteria",
+    ),
+    3: (
+        "Selective: admission test neither required nor recommended",
+        "Separately reported school-record and other criteria; no common admission test",
+    ),
+}
+TEST_COMPONENTS = (
+    ("SAT", "reading and writing", "satvr", 200, 800, "SAT section 200-800"),
+    ("SAT", "math", "satmt", 200, 800, "SAT section 200-800"),
+    ("ACT", "composite", "actcm", 1, 36, "ACT composite 1-36"),
+)
 
 
 def present(row, fields):
@@ -37,7 +65,29 @@ def present(row, fields):
 def load_admissions():
     return {
         pathways.number(row["UNITID"]): row
-        for row in pathways.zip_rows("ADM2023.zip")
+        for row in pathways.zip_rows("ADM2019.zip")
+    }
+
+
+def load_characteristics():
+    return {
+        pathways.number(row["UNITID"]): row
+        for row in pathways.zip_rows("IC2019.zip")
+    }
+
+
+def load_fall_enrollment():
+    """Fall first-time degree/certificate-seeking undergraduates."""
+    return {
+        pathways.number(row["UNITID"]): {
+            "all": pathways.number(row["EFTOTLT"]),
+            "domestic": (
+                pathways.number(row["EFTOTLT"])
+                - pathways.number(row["EFNRALT"])
+            ),
+        }
+        for row in pathways.zip_rows("EF2019A.zip")
+        if pathways.number(row["EFALEVEL"]) == 4
     }
 
 
@@ -57,24 +107,6 @@ def policy_label(admission):
     )
 
 
-def score_quantiles(admission, route):
-    def value(field):
-        raw = admission.get(field)
-        return raw if isinstance(raw, int) else pathways.number(raw)
-
-    if route == "SAT":
-        return tuple(
-            value(f"SATVR{q}") + value(f"SATMT{q}")
-            for q in (25, 50, 75)
-        )
-    if route == "ACT":
-        return tuple(
-            value(f"ACTCM{q}")
-            for q in (25, 50, 75)
-        )
-    return (0, 0, 0)
-
-
 def ability_evidence_rows(graduates, admissions):
     output = []
     for graduate in graduates:
@@ -84,121 +116,147 @@ def ability_evidence_rows(graduates, admissions):
         sat_share = pathways.number(admission.get("SATPCT")) / 100
         act_share = pathways.number(admission.get("ACTPCT")) / 100
 
-        # SAT and ACT reporters can overlap. These bounds are identifiable from
-        # IPEDS without assuming how many entrants sent both tests.
+        # SAT and ACT reporters can overlap. These are sharp bounds using only
+        # IPEDS submitter counts; they are diagnostics, not a third route.
         coverage_min = max(sat_share, act_share)
         coverage_max = min(1, sat_share + act_share)
         enrolled = pathways.number(admission.get("ENRLT"))
         sat_submitters = pathways.number(admission.get("SATNUM"))
         act_submitters = pathways.number(admission.get("ACTNUM"))
-        # The two submitter counts overlap by an unknown amount.  These are the
-        # sharp bounds on entrants with neither score, institution by institution.
-        no_test_lower = max(0, enrolled - sat_submitters - act_submitters)
-        no_test_upper = max(0, enrolled - max(sat_submitters, act_submitters))
+        neither_lower = max(0, enrolled - sat_submitters - act_submitters)
+        neither_upper = max(0, enrolled - max(sat_submitters, act_submitters))
         row = {
             "unitid": graduate["unitid"],
             "institution": graduate["institution"],
             "state": graduate["state"],
-            "bachelors_domestic": graduate["bachelors_domestic"],
+            "bachelors_domestic_2023": graduate["bachelors_domestic"],
             "direct_bachelors_8yr": graduate["direct_bachelors_8yr"],
             "transfer_bachelors_8yr": graduate["transfer_bachelors_8yr"],
             "transfer_share_bachelors_8yr": graduate["transfer_share_bachelors_8yr"],
             "direct_bachelor_rate_8yr": graduate["direct_bachelor_rate_8yr"],
-            "test_evidence_2023": evidence_label(has_sat, has_act),
-            "test_policy_2023": policy_label(admission) if admission else "not reported",
-            "first_time_enrolled_2023": enrolled,
-            "sat_submitters_2023": sat_submitters,
-            "sat_share_2023": sat_share if admission else "",
-            "act_submitters_2023": act_submitters,
-            "act_share_2023": act_share if admission else "",
-            "test_coverage_lower_2023": coverage_min if admission else "",
-            "test_coverage_upper_2023": coverage_max if admission else "",
-            "no_reported_test_lower_2023": no_test_lower if admission else "",
-            "no_reported_test_upper_2023": no_test_upper if admission else "",
+            "test_evidence_2019": evidence_label(has_sat, has_act),
+            "test_policy_2019": policy_label(admission) if admission else "not reported",
+            "first_time_enrolled_2019": enrolled,
+            "sat_submitters_2019": sat_submitters,
+            "sat_share_2019": sat_share if admission else "",
+            "act_submitters_2019": act_submitters,
+            "act_share_2019": act_share if admission else "",
+            "test_coverage_lower_2019": coverage_min if admission else "",
+            "test_coverage_upper_2019": coverage_max if admission else "",
+            "neither_sat_nor_act_lower_2019": neither_lower if admission else "",
+            "neither_sat_nor_act_upper_2019": neither_upper if admission else "",
         }
         for field in SAT_FIELDS + ACT_FIELDS:
-            row[field.lower() + "_2023"] = pathways.number(admission.get(field)) or ""
-        row["sat_total_median_2023"] = (
-            pathways.number(admission["SATVR50"])
-            + pathways.number(admission["SATMT50"])
-            if has_sat else ""
-        )
-        row["act_composite_median_2023"] = (
-            pathways.number(admission["ACTCM50"])
-            if has_act else ""
-        )
+            row[field.lower() + "_2019"] = pathways.number(admission.get(field)) or ""
         output.append(row)
     return output
 
 
-def freshman_route_rows(evidence):
+def freshman_test_route_rows(evidence):
     """Keep SAT and ACT as separate, non-exclusive measurement routes."""
     output = []
     for row in evidence:
-        if row["first_time_enrolled_2023"] == 0:
+        if row["first_time_enrolled_2019"] == 0:
             continue
         common = {
             "unitid": row["unitid"],
             "institution": row["institution"],
             "state": row["state"],
-            "first_time_enrolled_2023": row["first_time_enrolled_2023"],
-            "test_policy_2023": row["test_policy_2023"],
+            "first_time_enrolled_2019": row["first_time_enrolled_2019"],
+            "test_policy_2019": row["test_policy_2019"],
+            **{field.lower() + "_2019": "" for field in SAT_FIELDS + ACT_FIELDS},
         }
         for route, count_field, share_field, fields in (
-            ("SAT", "sat_submitters_2023", "sat_share_2023", SAT_FIELDS),
-            ("ACT", "act_submitters_2023", "act_share_2023", ACT_FIELDS),
+            ("SAT", "sat_submitters_2019", "sat_share_2019", SAT_FIELDS),
+            ("ACT", "act_submitters_2019", "act_share_2019", ACT_FIELDS),
         ):
-            if not all(row[field.lower() + "_2023"] != "" for field in fields):
+            if not all(row[field.lower() + "_2019"] != "" for field in fields):
                 continue
-            q25, q50, q75 = score_quantiles(
-                {field: row[field.lower() + "_2023"] for field in fields}, route
-            )
             output.append({
                 **common,
                 "route": route,
-                "route_count_lower_2023": row[count_field],
-                "route_count_upper_2023": row[count_field],
-                "route_share_reported_2023": row[share_field],
-                "score_scale": "SAT 400-1600" if route == "SAT" else "ACT 1-36",
-                "score_q25_2023": q25,
-                "score_q50_2023": q50,
-                "score_q75_2023": q75,
+                "route_count_2019": row[count_field],
+                "route_share_reported_2019": row[share_field],
+                "score_scale": (
+                    "SAT sections 200-800" if route == "SAT" else "ACT composite 1-36"
+                ),
+                **{field.lower() + "_2019": row[field.lower() + "_2019"]
+                   for field in fields},
             })
-        output.append({
-            **common,
-            "route": "No reported SAT/ACT",
-            "route_count_lower_2023": row["no_reported_test_lower_2023"],
-            "route_count_upper_2023": row["no_reported_test_upper_2023"],
-            "route_share_reported_2023": "",
-            "score_scale": "none",
-            "score_q25_2023": "",
-            "score_q50_2023": "",
-            "score_q75_2023": "",
-        })
     return output
 
 
-def national_route_rows(evidence):
-    rows = [row for row in evidence if row["first_time_enrolled_2023"] > 0]
-    enrolled = sum(row["first_time_enrolled_2023"] for row in rows)
+def national_test_route_rows(evidence, all_first_time):
+    """National SAT and ACT evidence counts; the two rows may overlap."""
+    rows = [row for row in evidence if row["first_time_enrolled_2019"] > 0]
+    selective = sum(row["first_time_enrolled_2019"] for row in rows)
     values = (
-        ("SAT", sum(row["sat_submitters_2023"] for row in rows),
-         sum(row["sat_submitters_2023"] for row in rows)),
-        ("ACT", sum(row["act_submitters_2023"] for row in rows),
-         sum(row["act_submitters_2023"] for row in rows)),
-        ("No reported SAT/ACT",
-         sum(row["no_reported_test_lower_2023"] for row in rows),
-         sum(row["no_reported_test_upper_2023"] for row in rows)),
+        ("SAT", sum(row["sat_submitters_2019"] for row in rows)),
+        ("ACT", sum(row["act_submitters_2019"] for row in rows)),
     )
     return [{
         "route": route,
-        "first_time_enrolled_reporting_universe": enrolled,
-        "people_lower": lower,
-        "people_upper": upper,
-        "share_lower": lower / enrolled,
-        "share_upper": upper / enrolled,
-        "additive": "no: SAT and ACT may overlap",
-    } for route, lower, upper in values]
+        "submitters_2019": count,
+        "share_selective_reporting_pool": count / selective,
+        "share_all_first_time_entrants": count / all_first_time,
+        "additive": "no: the same entrant may submit SAT and ACT",
+    } for route, count in values]
+
+
+def admission_path_rows(graduates, admissions, characteristics, enrollment):
+    """Construct additive fall-2019 entry paths, including open admission."""
+    unitids = {row["unitid"] for row in graduates}
+    all_first_time = sum(
+        enrollment.get(unitid, {}).get("all", 0) for unitid in unitids
+    )
+    output = []
+    accounted = 0
+    for code, (path, measure) in ADMISSION_PATHS.items():
+        matching = [
+            admissions[unitid] for unitid in unitids
+            if unitid in admissions
+            and pathways.number(admissions[unitid].get("ADMCON7")) == code
+        ]
+        people = sum(pathways.number(row.get("ENRLT")) for row in matching)
+        accounted += people
+        output.append({
+            "path": path,
+            "institutions": len(matching),
+            "fall_first_time_entrants_2019": people,
+            "share_all_first_time_entrants": people / all_first_time,
+            "ability_evidence": measure,
+            "source": "IPEDS ADM2019 admission-test consideration",
+        })
+
+    open_unitids = [
+        unitid for unitid in unitids
+        if pathways.number(characteristics.get(unitid, {}).get("OPENADMP")) == 1
+    ]
+    open_people = sum(
+        enrollment.get(unitid, {}).get("all", 0) for unitid in open_unitids
+    )
+    accounted += open_people
+    output.append({
+        "path": "Open admission",
+        "institutions": len(open_unitids),
+        "fall_first_time_entrants_2019": open_people,
+        "share_all_first_time_entrants": open_people / all_first_time,
+        "ability_evidence": "No selective cutoff; estimate the entrant distribution from origin populations",
+        "source": "IPEDS IC2019 open-admission status and EF2019A enrollment",
+    })
+
+    difference = all_first_time - accounted
+    if difference < 0:
+        raise ValueError("Admission paths exceed fall first-time enrollment")
+    output.append({
+        "path": "IPEDS reporting reconciliation",
+        "institutions": "",
+        "fall_first_time_entrants_2019": difference,
+        "share_all_first_time_entrants": difference / all_first_time,
+        "ability_evidence": "None; difference between ADM and EF reporting frames",
+        "source": "Calculated residual",
+    })
+    return output
 
 
 def consideration_rows(graduates, admissions):
@@ -211,7 +269,7 @@ def consideration_rows(graduates, admissions):
         result = {
             "basis": basis,
             "reporting_institutions": len(rows),
-            "first_time_enrolled_reporting_universe": enrolled,
+            "first_time_enrolled_reporting_universe_2019": enrolled,
         }
         for code, status in CONSIDERATION_STATUS.items():
             matching = [row for row in rows if pathways.number(row.get(field)) == code]
@@ -220,17 +278,114 @@ def consideration_rows(graduates, admissions):
             result[slug + "_enrolled"] = sum(
                 pathways.number(row.get("ENRLT")) for row in matching
             )
-        usable = result["required_enrolled"] + result["considered_if_submitted_enrolled"]
-        result["required_or_considered_share"] = usable / enrolled if enrolled else ""
         output.append(result)
     return output
 
 
+def interval_cdf(value, lower, upper):
+    """CDF of a uniform interval, including a possible point mass."""
+    if upper == lower:
+        return float(value >= upper)
+    if value <= lower:
+        return 0.0
+    if value >= upper:
+        return 1.0
+    return (value - lower) / (upper - lower)
+
+
+def interquartile_cdf(value, scale_min, q25, q75, scale_max):
+    """A bounded distribution matching the two 2019 IPEDS quartiles.
+
+    The lower tail, middle half, and upper tail are uniform within their
+    intervals. This avoids inventing a normal tail or an unpublished median.
+    """
+    anchors = (scale_min, q25, q75, scale_max)
+    if any(left > right for left, right in zip(anchors, anchors[1:])):
+        raise ValueError(f"Non-monotone score anchors: {anchors}")
+    masses = (0.25, 0.50, 0.25)
+    return sum(
+        mass * interval_cdf(value, left, right)
+        for mass, (left, right) in zip(masses, zip(anchors, anchors[1:]))
+    )
+
+
+def pool_cdf(rows, value):
+    total = sum(row["submitters_2019"] for row in rows)
+    if total == 0:
+        raise ValueError("Empty test-route pool")
+    return sum(
+        row["submitters_2019"] * interquartile_cdf(
+            value,
+            row["score_scale_min"],
+            row["score_q25_2019"],
+            row["score_q75_2019"],
+            row["score_scale_max"],
+        )
+        for row in rows
+    ) / total
+
+
+def test_component_rows(evidence):
+    """Build route-specific distributions without merging SAT and ACT."""
+    output = []
+    for row in evidence:
+        for route, component, prefix, scale_min, scale_max, scale in TEST_COMPONENTS:
+            values = tuple(row[f"{prefix}{q}_2019"] for q in (25, 75))
+            if any(value == "" for value in values):
+                continue
+            if not scale_min <= values[0] <= values[1] <= scale_max:
+                continue
+            submitters = row[f"{route.lower()}_submitters_2019"]
+            if submitters <= 0:
+                continue
+            output.append({
+                "unitid": row["unitid"],
+                "institution": row["institution"],
+                "state": row["state"],
+                "route": route,
+                "component": component,
+                "submitters_2019": submitters,
+                "score_scale": scale,
+                "score_scale_min": scale_min,
+                "score_q25_2019": values[0],
+                "score_q75_2019": values[1],
+                "score_scale_max": scale_max,
+            })
+
+    pools = {}
+    for route, component, *_ in TEST_COMPONENTS:
+        pools[(route, component)] = [
+            row for row in output
+            if row["route"] == route and row["component"] == component
+        ]
+    for row in output:
+        pool = pools[(row["route"], row["component"])]
+        for q in (25, 75):
+            row[f"route_pool_percentile_q{q}"] = 100 * pool_cdf(
+                pool, row[f"score_q{q}_2019"]
+            )
+        row["distribution"] = "25%, 50%, 25% uniform mass across quartile intervals"
+    return output
+
+
+def test_route_coverage(rows):
+    output = {}
+    for route in ("SAT", "ACT"):
+        route_rows = [row for row in rows if row["route"] == route]
+        # SAT has two component rows per institution; count it once.
+        by_unitid = {row["unitid"]: row for row in route_rows}
+        output[route] = {
+            "institutions": len(by_unitid),
+            "submitters": sum(row["submitters_2019"] for row in by_unitid.values()),
+        }
+    return output
+
+
 def evidence_coverage(rows):
-    covered = [row for row in rows if row["test_evidence_2023"] != "none"]
+    covered = [row for row in rows if row["test_evidence_2019"] != "none"]
     return {
         "institutions": len(covered),
-        "bachelors_domestic": sum(row["bachelors_domestic"] for row in covered),
+        "bachelors_domestic": sum(row["bachelors_domestic_2023"] for row in covered),
         "direct_bachelors_8yr": sum(row["direct_bachelors_8yr"] for row in covered),
     }
 
@@ -242,17 +397,27 @@ def main():
         pathways.load_outcomes(),
         pathways.load_enrollment(),
     )
-    rows = ability_evidence_rows(graduates, load_admissions())
+    admissions = load_admissions()
+    enrollment = load_fall_enrollment()
+    rows = ability_evidence_rows(graduates, admissions)
+    paths = admission_path_rows(
+        graduates, admissions, load_characteristics(), enrollment
+    )
+    all_first_time = sum(row["fall_first_time_entrants_2019"] for row in paths)
     pathways.write_tsv(DERIVED / "institution_ability_evidence.tsv", rows)
-    pathways.write_tsv(DERIVED / "freshman_ability_routes.tsv",
-                       freshman_route_rows(rows))
-    pathways.write_tsv(DERIVED / "national_freshman_routes.tsv",
-                       national_route_rows(rows))
+    pathways.write_tsv(
+        DERIVED / "freshman_test_routes.tsv", freshman_test_route_rows(rows)
+    )
+    pathways.write_tsv(DERIVED / "national_test_routes.tsv",
+                       national_test_route_rows(rows, all_first_time))
+    pathways.write_tsv(DERIVED / "freshman_admission_paths.tsv", paths)
     pathways.write_tsv(DERIVED / "freshman_admission_considerations.tsv",
-                       consideration_rows(graduates, load_admissions()))
+                       consideration_rows(graduates, admissions))
+    component_rows = test_component_rows(rows)
+    pathways.write_tsv(DERIVED / "freshman_test_route_ability.tsv", component_rows)
     coverage = evidence_coverage(rows)
     print(
-        f"wrote {len(rows):,} institutions; 2023 tests cover "
+        f"wrote {len(rows):,} institutions; fall-2019 tests cover "
         f"{coverage['bachelors_domestic']:,} current domestic bachelor's awards"
     )
 

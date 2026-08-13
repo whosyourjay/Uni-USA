@@ -15,13 +15,29 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/HD2023.zip",
         "e11d35af6f50fbe2f51d8ddd5a9d4f49860abbab7d73beae1f8524f13ad8945b",
     ),
-    "ADM2023.zip": (
-        "https://nces.ed.gov/ipeds/datacenter/data/ADM2023.zip",
-        "670ecc7c4313f044dcdf740a42ef10c6d2927eb9f890fb405e3569c8442aca27",
+    "ADM2019.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2019.zip",
+        "908034d862377d3214f1e0395cdb34dd041049682c553d1fb391f9eda8196aa5",
     ),
-    "ADM2023_Dict.zip": (
-        "https://nces.ed.gov/ipeds/datacenter/data/ADM2023_Dict.zip",
-        "d80bf7c781e39f7cbcb02f10f4d17b0c2c0e16786ea686217d12344c6167803d",
+    "ADM2019_Dict.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2019_Dict.zip",
+        "c21b76d466305e7fb4fe82fd3403cd247c607a3558de3ef7fc66d457a396137c",
+    ),
+    "IC2019.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/IC2019.zip",
+        "5f90c01bef16c0b058930c568a12dd068779399fdca76f45acbf2a758e652563",
+    ),
+    "IC2019_Dict.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/IC2019_Dict.zip",
+        "69ba91d4d52840e5433e54dc2f825dad25d05768f707e399ae57961136297947",
+    ),
+    "EF2019A.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/EF2019A.zip",
+        "6ad08d19451a5a777acff44623f992a250a730fc30388da73b1b74be418b3c24",
+    ),
+    "EF2019A_Dict.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/EF2019A_Dict.zip",
+        "13974d784f123de116866c09bf002c6e6ade44367aad8548bcd115598d9f05cd",
     ),
     "EFFY2024.zip": (
         "https://nces.ed.gov/ipeds/datacenter/data/EFFY2024.zip",
