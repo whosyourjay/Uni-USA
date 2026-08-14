@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
-"""Compare selective-school SAT q25 bars with the national SAT upper tail."""
+"""Compare each school's q25 test bars with the national pool that clears them.
 
-import csv
+A published q25 bar sits above three quarters of that route's enrolled
+submitters, so the seats the bar competes for are 0.75 of the route's submitter
+count.  The pool is the number of national test takers who clear the same bar.
+SAT and ACT pools and seats are summed before dividing, and the ratio is
+averaged over the years a school reports.
+"""
+
+from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
+from statistics import fmean
 import re
 import subprocess
-from zipfile import ZipFile
 
+import ability
 import calibrate_tests
 import pathways
 
 
 ROOT = Path(__file__).parent
 YEARS = (2017, 2018, 2019)
+ABOVE_Q25_SHARE = 0.75
 SCHOOLS = {
     166683: "Massachusetts Institute of Technology",
     115409: "Harvey Mudd College",
@@ -22,19 +32,8 @@ SCHOOLS = {
 }
 
 
-def admissions(year):
-    path = ROOT / "sources" / f"ADM{year}.zip"
-    with ZipFile(path) as archive:
-        with archive.open(f"adm{year}.csv") as source:
-            rows = csv.DictReader(line.decode("utf-8-sig") for line in source)
-            return {
-                int(row["UNITID"]): row
-                for row in rows
-                if int(row["UNITID"]) in SCHOOLS
-            }
-
-
-def national_test_takers(year):
+@lru_cache(maxsize=None)
+def national_sat_takers(year):
     path = ROOT / "sources" / f"{year}-total-group-sat-report.pdf"
     result = subprocess.run(
         ["pdftotext", "-layout", str(path), "-"],
@@ -52,65 +51,109 @@ def national_test_takers(year):
     return total
 
 
+@lru_cache(maxsize=None)
+def national_act_counts():
+    """Composite frequencies for the 2018 tested class, used for every year."""
+    counts, _ = calibrate_tests.load_act_composite_percentiles()
+    return counts
+
+
+def route_pools(admission, sat_table, sat_takers, act_counts):
+    """National takers clearing each reported q25 bar, and the seats above it."""
+    pools = {}
+    sat_bar = sum(
+        pathways.number(admission.get(field)) for field in ("SATVR25", "SATMT25")
+    )
+    sat_submitters = pathways.number(admission.get("SATNUM"))
+    if sat_bar > 0 and sat_submitters > 0:
+        percentile = calibrate_tests.interpolate(sat_table, sat_bar)
+        pools["sat"] = {
+            "bar": sat_bar,
+            "pool": sat_takers * (1 - percentile / 100),
+            "seats": ABOVE_Q25_SHARE * sat_submitters,
+        }
+    act_bar = pathways.number(admission.get("ACTCM25"))
+    act_submitters = pathways.number(admission.get("ACTNUM"))
+    if act_bar > 0 and act_submitters > 0:
+        pools["act"] = {
+            "bar": act_bar,
+            "pool": sum(
+                count for score, count in act_counts.items() if score >= act_bar
+            ),
+            "seats": ABOVE_Q25_SHARE * act_submitters,
+        }
+    return pools
+
+
+def pool_ratio(pools):
+    """Summed SAT and ACT pools per summed seat, or None without a bar."""
+    seats = sum(route["seats"] for route in pools.values())
+    if not seats:
+        return None
+    return sum(route["pool"] for route in pools.values()) / seats
+
+
+def pool_ratio_means(unitids, years=YEARS):
+    """Mean pool-to-class ratio by institution over the reporting years."""
+    act_counts = national_act_counts()
+    ratios = defaultdict(list)
+    for year in years:
+        sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
+        sat_takers = national_sat_takers(year)
+        for unitid, admission in ability.load_admissions(year).items():
+            if unitid not in unitids:
+                continue
+            ratio = pool_ratio(
+                route_pools(admission, sat_table, sat_takers, act_counts)
+            )
+            if ratio is not None:
+                ratios[unitid].append(ratio)
+    return {unitid: round(fmean(values), 2) for unitid, values in ratios.items()}
+
+
 def annual_rows():
+    act_counts = national_act_counts()
     output = []
     for year in YEARS:
-        table = calibrate_tests.load_sat_total_user_percentiles(year)
-        total_test_takers = national_test_takers(year)
-        school_rows = admissions(year)
+        sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
+        sat_takers = national_sat_takers(year)
+        admissions = ability.load_admissions(year)
         for unitid, school in SCHOOLS.items():
-            row = school_rows[unitid]
-            q25_sum = int(row["SATVR25"]) + int(row["SATMT25"])
-            percentile = calibrate_tests.interpolate(table, q25_sum)
-            passing = total_test_takers * (1 - percentile / 100)
-            seats = int(row["ENRLT"])
-            seats_above = 0.75 * seats
-            output.append({
-                "school": school,
-                "year": year,
-                "sat_q25_section_sum": q25_sum,
-                "sat_q25_test_taker_percentile": round(percentile, 4),
-                "sat_test_takers": total_test_takers,
-                "test_takers_at_or_above_q25": round(passing),
-                "first_year_seats": seats,
-                "seats_at_or_above_q25": round(seats_above, 2),
-                "test_takers_at_or_above_per_seat": round(
-                    passing / seats_above, 2
-                ),
-            })
+            pools = route_pools(
+                admissions[unitid], sat_table, sat_takers, act_counts
+            )
+            row = {"school": school, "year": year, "sat_test_takers": sat_takers}
+            for route in ("sat", "act"):
+                values = pools.get(route, {})
+                row[f"{route}_q25_bar"] = values.get("bar", "")
+                row[f"{route}_pool"] = round(values["pool"]) if values else ""
+                row[f"{route}_seats"] = round(values["seats"], 2) if values else ""
+            row["pool_per_seat"] = round(pool_ratio(pools), 2)
+            output.append(row)
     return output
 
 
 def average_rows(rows):
+    fields = [key for key in rows[0] if key not in {"school", "year"}]
     output = []
     for school in SCHOOLS.values():
         values = [row for row in rows if row["school"] == school]
-        result = {"school": school, "year": "2017-19 average"}
-        for field in (
-            "sat_q25_section_sum",
-            "sat_q25_test_taker_percentile",
-            "sat_test_takers",
-            "test_takers_at_or_above_q25",
-            "first_year_seats",
-            "seats_at_or_above_q25",
-            "test_takers_at_or_above_per_seat",
-        ):
-            result[field] = round(sum(row[field] for row in values) / len(values), 2)
+        result = {"school": school, "year": f"{YEARS[0]}-{YEARS[-1]} average"}
+        for field in fields:
+            present = [row[field] for row in values if row[field] != ""]
+            result[field] = round(fmean(present), 2) if present else ""
         output.append(result)
     return output
 
 
 def main():
     rows = annual_rows()
+    averages = average_rows(rows)
     pathways.write_tsv(
-        ROOT / "derived" / "top_sat_q25_seat_ratios.tsv",
-        rows + average_rows(rows),
+        ROOT / "derived" / "top_q25_pool_ratios.tsv", rows + averages
     )
-    for row in average_rows(rows):
-        print(
-            f"{row['school']}: "
-            f"{row['test_takers_at_or_above_per_seat']:.2f} per seat"
-        )
+    for row in averages:
+        print(f"{row['school']}: {row['pool_per_seat']:.2f} per seat")
 
 
 if __name__ == "__main__":

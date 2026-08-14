@@ -202,13 +202,15 @@ def interpolate(table, value):
     return table[lower] + fraction * (table[upper] - table[lower])
 
 
-def admission_route_centers(admission, year, act_table=None, sat_table=None):
+def admission_route_centers(
+    admission, year, act_table=None, sat_table=None, include_sat=True
+):
     """Convert one IPEDS admissions row into separate SAT and ACT centers."""
     if act_table is None:
         _, act_table = load_act_composite_percentiles()
     output = {}
     sat_values = [pathways.number(admission.get(field)) for field in ability.SAT_FIELDS]
-    if all(sat_values) and pathways.number(admission.get("SATNUM")) > 0:
+    if include_sat and all(sat_values) and pathways.number(admission.get("SATNUM")) > 0:
         if sat_table is None:
             sat_table = load_sat_total_user_percentiles(year)
         output["SAT"] = sum((

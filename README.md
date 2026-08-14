@@ -4,7 +4,7 @@ Ranks U.S. universities and majors by the estimated age-18 academic ability of
 their bachelor's graduates. Nothing here reflects research output or reputation.
 
 First pass: 2,356 institutions and 64,314 institution-major pairs, using 2022–23
-degrees, fall 2019 admission-route counts, fall 2019–2023 test-score bars, and
+degrees, fall 2019 admission-route counts, fall 2014–2023 test-score bars, and
 2023 transfer outcomes. The current score is a rough test-taker percentile proxy;
 converting it to the full age-18 scale is still in progress.
 
@@ -58,14 +58,38 @@ rounds and legacy are overlays, not routes.
 
 ## Outputs
 
-- `schools.tsv` — 2,356 final institutions, ordered by rough ability
-- `majors.tsv` — 64,314 institution-major pairs; major scores currently inherit
+- `schools.tsv` — 2,356 final institutions, ordered by `freshman_score`
+- `majors.tsv` — 85,711 institution-major pairs; major scores currently inherit
   the institution score
 - `derived/final_admission_paths.tsv` — the exhaustive national table above
 - `derived/institution_final_routes.tsv` — the same mutually exclusive routes
   at each final institution
 - `derived/transfer_origin_scores.tsv` — origin scores and transfer-out weights
 - `derived/transfer_score.tsv` — pooled transfer score and coverage by origin type
+
+`bachelors` is the mean annual domestic award count over the completions years
+2014–2023, counting only the years an institution reports. Major rows average
+the same way and then rescale onto that school mean, which absorbs the 0.2% of
+awards filed under CIP codes retired before the CIP2020 taxonomy. `satnum_pct`
+and `actnum_pct` give the enrolled SAT and ACT submitters as a percentage of the
+entering class, averaged over the admission years 2014–2023 in which a school
+reports at least one submitter. IPEDS never counts students who submitted
+neither test, so `no_test_pct` averages the leftover share of each entering
+class, `max(0, ENRLT - SAT - ACT) / ENRLT`. A year with no reported submitter is
+missing data rather than a class without scores, which leaves all three columns
+blank for the 899 schools that never report. Students who sent both tests appear
+in each submitter count, so the three percentages need not sum to 100.
+
+`ability_pool_ratio` asks how many students nationally could clear a school's
+published bar for each seat behind it. A q25 bar sits above three quarters of
+that route's submitters, so the seats it competes for are `0.75 * SATNUM` and
+`0.75 * ACTNUM`. The SAT pool is the national test-taker total times the share
+scoring above the school's `SATVR25 + SATMT25`; the ACT pool sums the composite
+frequencies at or above `ACTCM25`. Each year sums both pools and both seat
+counts before dividing, and the column averages that ratio over 2017–2019, the
+years with published national SAT taker totals. The ratio scales with how few
+seats a school has, so small selective colleges sit far above large ones, and a
+school reporting a handful of submitters can reach six figures.
 
 Downloaded sources and generated tables stay local and out of Git.
 
@@ -107,11 +131,13 @@ Both use percentiles among actual test takers. Within each rounded SAT percentil
 label, its implied interval is divided evenly among the score buckets. SAT and
 ACT remain separate routes throughout the final mixture.
 
-`schools.tsv` records separate annual SAT and ACT centers for fall 2019–2023.
-Its `freshman_score` first averages each route across the available years, then
-gives the available SAT and ACT route means equal weight. SAT uses the matching
-annual test-taker distribution; ACT provisionally uses the same 2018 test-taker
-distribution for every year.
+`schools.tsv` records one SAT center averaged across available fall 2016–2023
+observations and one ACT center averaged across fall 2014–2023. Its
+`freshman_score` gives the available SAT and ACT route means equal weight. SAT
+uses the matching annual test-taker distribution; ACT provisionally uses the
+same 2018 test-taker distribution for every year. Schools are ordered by
+`freshman_score` until the transfer adjustment is reliable enough to use
+`ability` as the default.
 
 Across institutions with complete score bars, the SAT mixture contains 846,098
 submitters and has center 72.09; the ACT mixture contains 673,599 and has center
@@ -144,6 +170,22 @@ inputs. `fetch_sources.py` pins each file by SHA-256.
 
 ## Rebuild
 
+Slow inputs are preprocessed once into `derived/`, then read back on later runs:
+`first_major_awards.tsv` for the latest completions archive,
+`school_bachelors_by_year.tsv` and `major_bachelor_means.tsv` for the ten-year
+award means, and `class_rank.tsv` for the parsed Common Data Set C10 tables.
+Each rebuilds itself when a source is newer or when a needed school is missing,
+so no manual invalidation step is required.
+
+To regenerate only `schools.tsv` from the downloaded sources, without rewriting
+either majors table:
+
+```sh
+python3 outputs.py --schools-only
+```
+
+To rebuild every intermediate table and both canonical outputs:
+
 ```sh
 python3 fetch_sources.py
 python3 pathways.py
@@ -156,3 +198,16 @@ python3 transfer.py
 python3 final_routes.py
 python3 outputs.py
 ```
+
+`python3 school_evidence.py "<name>"` prints one school's admission counts,
+survey answers, and Common Data Set class-rank history. `python3 rank_ability.py`
+fits the class-rank model: national ability is standard normal, a high school's
+mean carries `BETWEEN_SCHOOL_VARIANCE` of it, and class rank is the normal CDF of
+the remaining within-school position. Only the top-decile anchor identifies a
+school, because the top-quarter anchor saturates at 100% wherever the model is
+worth running. The class spread is fitted once across schools with both a C10 and
+a published test percentile.
+
+`python3 viz_test_evidence.py` renders `test_evidence.html` from
+`test_evidence_template.html`, charting how test-score evidence at the top of the
+ranking broke in 2021.

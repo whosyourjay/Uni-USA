@@ -10,28 +10,22 @@ import ability
 import class_rank
 import final_routes
 import pathways
+import sat_seat_ratio
 import scores
 import transfer
 
 
 ROOT = pathways.ROOT
 CIP_BROWSE = pathways.SOURCES / "CIP2020-browse.html"
-TEST_PERCENTILE_COLUMNS = tuple(
-    column
-    for year in scores.ADMISSION_YEARS
-    for column in (
-        f"sat_taker_percentile_{year}",
-        f"act_taker_percentile_{year}",
-    )
-)
+TEST_PERCENTILE_COLUMNS = ("sat_taker_percentile", "act_taker_percentile")
 SCHOOL_COLUMNS = (
     "school",
     "ability",
     "bachelors",
     "freshman_score",
-    "satnum_2019",
-    "actnum_2019",
+    *scores.TEST_SHARE_COLUMNS,
     *TEST_PERCENTILE_COLUMNS,
+    "ability_pool_ratio",
     "class_rank_percentile_2019",
     "transfer_share",
 )
@@ -84,46 +78,52 @@ def current_split(bachelors, transfer_share):
     return round(bachelors - transfer, 3), transfer
 
 
-def school_rows(graduates, admissions, routes, transfer_score, institution_routes):
+def weighted_mean(components):
+    """Mean of scored (value, count) pairs, with the weight they cover."""
+    weight = sum(count for _, count in components)
+    if not weight:
+        return "", 0
+    return sum(value * count for value, count in components) / weight, weight
+
+
+def scored_components(route, paths, transfer_score):
+    """Split one school's mutually exclusive routes into the measured ones."""
+    freshman = [
+        (route["sat_taker_percentile"], paths.get("SAT", 0)),
+        (route["act_taker_percentile"], paths.get("ACT", 0)),
+        (route["freshman_score"], paths.get("Service-academy nomination", 0)),
+        (97.0, paths.get("Automatic class-rank guarantee", 0)),
+    ]
+    freshman = [
+        (score, count) for score, count in freshman if score != "" and count > 0
+    ]
+    return freshman, freshman + [(transfer_score, paths["Transfer"])]
+
+
+def school_rows(graduates, routes, transfer_score, institution_routes):
     paths_by_id = {}
     for row in institution_routes:
         paths_by_id.setdefault(row["unitid"], {})[row["route"]] = row[
             "estimated_bachelors"
         ]
+    test_shares = scores.test_share_means()
+    blank_shares = {column: "" for column in scores.TEST_SHARE_COLUMNS}
+    pool_ratios = sat_seat_ratio.pool_ratio_means(set(paths_by_id))
+    mean_bachelors = pathways.mean_bachelors()
     rows = []
     for graduate in graduates:
         route = scores.route_fields(graduate["unitid"], routes)
-        admission = admissions.get(graduate["unitid"])
         paths = paths_by_id[graduate["unitid"]]
         bachelors = graduate["bachelors_domestic"]
         transfer_count = paths["Transfer"]
         direct = bachelors - transfer_count
         share = transfer_count / bachelors
-        freshman_components = [
-            (route["sat_taker_percentile_mean_2019_2023"], paths.get("SAT", 0)),
-            (route["act_taker_percentile_mean_2019_2023"], paths.get("ACT", 0)),
-            (route["freshman_score"], paths.get("Service-academy nomination", 0)),
-            (97.0, paths.get("Automatic class-rank guarantee", 0)),
-        ]
-        freshman_components = [
-            (score, count)
-            for score, count in freshman_components
-            if score != "" and count > 0
-        ]
-        freshman_weight = sum(count for _, count in freshman_components)
-        freshman_score = (
-            sum(score * count for score, count in freshman_components)
-            / freshman_weight
-            if freshman_weight else ""
+        freshman_components, components = scored_components(
+            route, paths, transfer_score
         )
-        components = freshman_components + [(transfer_score, transfer_count)]
-        coverage_count = sum(count for _, count in components)
+        freshman_score, _ = weighted_mean(freshman_components)
+        rough_ability, coverage_count = weighted_mean(components)
         coverage = coverage_count / bachelors
-        rough_ability = (
-            sum(value * count for value, count in components) / coverage_count
-            if coverage_count
-            else ""
-        )
         if rough_ability == "":
             status = "unscored"
         elif freshman_score == "":
@@ -136,18 +136,14 @@ def school_rows(graduates, admissions, routes, transfer_score, institution_route
             "ability_coverage": round(coverage, 6) if coverage else "",
             **route,
             "freshman_score": round(freshman_score, 2) if freshman_score != "" else "",
-            "satnum_2019": (
-                pathways.number(admission.get("SATNUM")) if admission else ""
-            ),
-            "actnum_2019": (
-                pathways.number(admission.get("ACTNUM")) if admission else ""
-            ),
+            **test_shares.get(graduate["unitid"], blank_shares),
+            "ability_pool_ratio": pool_ratios.get(graduate["unitid"], ""),
             "class_rank_percentile_2019": "",
             "transfer_score": transfer_score if share != "" and share > 0 else "",
             "school_id": graduate["unitid"],
             "school": graduate["institution"],
             "state": graduate["state"],
-            "bachelors": bachelors,
+            "bachelors": round(mean_bachelors[graduate["unitid"]], 3),
             "estimated_sat_bachelors": round(paths.get("SAT", 0), 3),
             "estimated_act_bachelors": round(paths.get("ACT", 0), 3),
             "estimated_open_admission_bachelors": round(
@@ -177,73 +173,79 @@ def school_rows(graduates, admissions, routes, transfer_score, institution_route
             "ability_status": status,
         })
     rows.sort(key=lambda row: (
-        row["ability"] == "", -(row["ability"] or 0), -row["bachelors"],
+        row["freshman_score"] == "", -(row["freshman_score"] or 0),
+        -row["bachelors"],
         row["school_id"],
     ))
-    for rank, row in enumerate((row for row in rows if row["ability"] != ""), 1):
+    for rank, row in enumerate(
+        (row for row in rows if row["freshman_score"] != ""), 1
+    ):
         row["rank"] = rank
     return rows
 
 
-def major_completions():
-    rows = []
-    for row in pathways.zip_rows("C2023_A.zip"):
-        if (
-            pathways.number(row["MAJORNUM"]) == 1
-            and pathways.number(row["AWLEVEL"]) == 5
-            and row["CIPCODE"].strip() != "99"
-        ):
-            domestic = pathways.number(row["CTOTALT"]) - pathways.number(
-                row["CNRALT"]
-            )
-            if domestic > 0:
-                rows.append((
-                    pathways.number(row["UNITID"]),
-                    row["CIPCODE"].strip(),
-                    domestic,
-                ))
-    return rows
+def titled_major_means(titles, wanted):
+    """Mean per-major awards for the wanted schools, keeping titled CIP codes.
+
+    Codes retired before the CIP2020 taxonomy carry no official title, so their
+    mean rescales onto the school's remaining majors.
+    """
+    grouped = {}
+    dropped = 0.0
+    for row in pathways.mean_major_bachelors():
+        if row["unitid"] not in wanted:
+            continue
+        if row["cip_code"] in titles:
+            grouped.setdefault(row["unitid"], []).append(row)
+        else:
+            dropped += row["mean_domestic"]
+    return grouped, dropped
 
 
 def major_rows(schools, titles):
     by_id = {row["school_id"]: row for row in schools}
+    grouped, _ = titled_major_means(titles, by_id)
     rows = []
-    for unitid, cip_code, bachelors in major_completions():
-        school = by_id.get(unitid)
-        if school is None:
-            continue
-        if cip_code not in titles:
-            raise ValueError(f"Missing official CIP title: {cip_code}")
-        direct, transfer = current_split(bachelors, school["transfer_share"])
-        rows.append({
-            "rank": "",
-            "ability": school["ability"],
-            "ability_coverage": school["ability_coverage"],
-            "freshman_score": school["freshman_score"],
-            "satnum_2019": school["satnum_2019"],
-            "actnum_2019": school["actnum_2019"],
-            "transfer_score": school["transfer_score"],
-            "school_id": unitid,
-            "school": school["school"],
-            "state": school["state"],
-            "cip_code": cip_code,
-            "major": titles[cip_code],
-            "bachelors": bachelors,
-            "estimated_direct_bachelors": direct,
-            "estimated_transfer_bachelors": transfer,
-            "transfer_share": school["transfer_share"],
-            **{column: school[column] for column in TEST_PERCENTILE_COLUMNS},
-            "class_rank_percentile_2019": school[
-                "class_rank_percentile_2019"
-            ],
-            "freshman_score_basis": school["freshman_score_basis"],
-            "ability_status": school["ability_status"] + "; school-level",
-        })
+    for unitid, majors in grouped.items():
+        school = by_id[unitid]
+        titled = sum(major["mean_domestic"] for major in majors)
+        scale = school["bachelors"] / titled if titled else 0
+        for major in majors:
+            cip_code = major["cip_code"]
+            bachelors = round(major["mean_domestic"] * scale, 3)
+            direct, transfer = current_split(bachelors, school["transfer_share"])
+            rows.append({
+                "rank": "",
+                "ability": school["ability"],
+                "ability_coverage": school["ability_coverage"],
+                "freshman_score": school["freshman_score"],
+                **{column: school[column] for column in scores.TEST_SHARE_COLUMNS},
+                "ability_pool_ratio": school["ability_pool_ratio"],
+                "transfer_score": school["transfer_score"],
+                "school_id": unitid,
+                "school": school["school"],
+                "state": school["state"],
+                "cip_code": cip_code,
+                "major": titles[cip_code],
+                "bachelors": bachelors,
+                "estimated_direct_bachelors": direct,
+                "estimated_transfer_bachelors": transfer,
+                "transfer_share": school["transfer_share"],
+                **{column: school[column] for column in TEST_PERCENTILE_COLUMNS},
+                "class_rank_percentile_2019": school[
+                    "class_rank_percentile_2019"
+                ],
+                "freshman_score_basis": school["freshman_score_basis"],
+                "ability_status": school["ability_status"] + "; school-level",
+            })
     rows.sort(key=lambda row: (
-        row["ability"] == "", -(row["ability"] or 0), -row["bachelors"],
+        row["freshman_score"] == "", -(row["freshman_score"] or 0),
+        -row["bachelors"],
         row["school_id"], row["cip_code"],
     ))
-    for rank, row in enumerate((row for row in rows if row["ability"] != ""), 1):
+    for rank, row in enumerate(
+        (row for row in rows if row["freshman_score"] != ""), 1
+    ):
         row["rank"] = rank
     return rows
 
@@ -270,29 +272,31 @@ def build_tables():
     )
     detailed_schools = school_rows(
         graduates,
-        admissions,
         scores.route_lookup(graduates),
         transfer_score,
         institution_routes,
     )
-    target_ids = {
-        row["school_id"] for row in class_rank.top_sample_rows(detailed_schools)
-    }
-    rank_scores = class_rank.score_lookup(graduates, target_ids)
+    rank_scores = class_rank.score_lookup(
+        graduates, class_rank.top_sample_rows(detailed_schools), admissions
+    )
     for row in detailed_schools:
         if row["school_id"] in rank_scores:
             row["class_rank_percentile_2019"] = round(
                 rank_scores[row["school_id"]]["class_rank_mean"], 2
             )
     detailed_majors = major_rows(detailed_schools, load_cip_titles())
-    school_counts = {
-        row["school_id"]: row["bachelors"] for row in detailed_schools
-    }
     major_counts = Counter()
     for row in detailed_majors:
         major_counts[row["school_id"]] += row["bachelors"]
-    if school_counts != major_counts:
-        raise ValueError("School and major domestic bachelor counts do not reconcile")
+    unreconciled = [
+        row["school"] for row in detailed_schools
+        if abs(major_counts[row["school_id"]] - row["bachelors"]) > 0.5
+    ]
+    if unreconciled:
+        raise ValueError(
+            f"{len(unreconciled):,} schools do not reconcile with their majors: "
+            + ", ".join(unreconciled[:3])
+        )
     schools = [
         {column: row[column] for column in SCHOOL_COLUMNS}
         for row in detailed_schools

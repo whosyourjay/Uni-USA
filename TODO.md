@@ -6,11 +6,9 @@ Each item ends with a concrete intermediate output. Historical extensions remain
 
 ## 1. Separate and score freshman-admission routes
 
-IPEDS SAT/ACT quartiles describe **enrolled first-time students**, not the entire admitted pool. SAT and ACT are separate measurement routes even when the same student submitted both. Test-policy categories are a secondary coverage audit, not routes. Actual non-test mechanisms must be named and modeled separately.
+- [ ] Estimate the share of minor routes in the top 10+10 schools: Athletics, audition, Automatic class-rank
 
-- [x] Parse 2019–20 CDS C10 data for the ten highest freshman-score schools and the next ten highest-ability schools; report missing publishers instead of expanding the sample.
-
-- [ ] Split Carnegie Mellon into its separately admitted undergraduate colleges when comparable college-level SAT/ACT/rank data are available; leave Harvey Mudd institution-wide because students enter before declaring a major.
+- [ ] GPA/rank (is this different from Automatic class-rank guarantee?) where SAT/ACT are not available. Defer this task if it requires individual school pdfs
 
 - [ ] Get data on major-specific thresholds for open universities
 
@@ -118,6 +116,7 @@ Neither the freshman nor transfer entrant distribution is yet the distribution o
 
 ## Deferred
 
+- [ ] Split Carnegie Mellon into its separately admitted undergraduate colleges when comparable college-level SAT/ACT/rank data are available; leave Harvey Mudd institution-wide because students enter before declaring a major.
 - Align admissions evidence to historical entering cohorts and estimate multiple cohort-years separately before aggregation.
 - Replace the annual award/population bridge with unique eventual bachelor recipients from a synthetic cohort, including late completion, repeat bachelor's degrees, migration, and residency differences.
 - Calibrate transfer and completion adjustments with Baccalaureate and Beyond or Beginning Postsecondary Students microdata.
