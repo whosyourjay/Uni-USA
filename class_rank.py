@@ -34,8 +34,17 @@ REPOSITORY_URL = (
     "common-data-set-repository/"
 )
 REPOSITORY_HTML = pathways.SOURCES / "common-data-set-repository.html"
-CDS_DIRECTORY = pathways.SOURCES / "cds-2019"
-YEAR_COLUMN = 6
+CDS_YEAR_COLUMNS = {
+    "2024-25": 1,
+    "2023-24": 2,
+    "2022-23": 3,
+    "2021-22": 4,
+    "2020-21": 5,
+    "2019-20": 6,
+    "2018-19": 7,
+    "2017-18": 8,
+}
+CDS_YEAR = "2019-20"
 SCHOOL_TABLE = ROOT / "schools.tsv"
 RANK_LABELS = {
     "top_10_pct": (
@@ -62,6 +71,16 @@ RANK_LABELS = {
 LOCAL_SOURCE_OVERRIDES = {
     "Carnegie Mellon University": pathways.SOURCES / "cds-2019-carnegie-mellon.pdf",
     "Harvey Mudd College": pathways.SOURCES / "cds-2019-harvey-mudd.pdf",
+}
+STATISTIC_FIELDS = (
+    "class_rank_q25", "class_rank_median", "class_rank_q75", "class_rank_mean",
+)
+C10_FIELDS = (*RANK_LABELS, "rank_reporting_pct", *STATISTIC_FIELDS)
+EMPTY_C10 = {field: "" for field in C10_FIELDS}
+RANK_TABLE = pathways.DERIVED / "class_rank.tsv"
+RANK_TABLE_COLUMNS = {
+    "unitid": lambda value: int(value) if value else "",
+    "class_rank_mean": lambda value: float(value) if value else "",
 }
 
 
@@ -109,16 +128,25 @@ def unwrap_repository_url(url):
     return unquote(url)
 
 
-def repository_rows(path=REPOSITORY_HTML):
+def cds_directory(year=CDS_YEAR):
+    return pathways.SOURCES / f"cds-{year[:4]}"
+
+
+def repository_rows(path=REPOSITORY_HTML, year=CDS_YEAR):
+    column = CDS_YEAR_COLUMNS[year]
     parser = RepositoryParser()
     parser.feed(path.read_text(encoding="utf-8"))
     output = []
     for cells in parser.rows:
-        if len(cells) <= YEAR_COLUMN:
+        if len(cells) <= column:
             continue
-        url = unwrap_repository_url(cells[YEAR_COLUMN]["href"])
+        url = unwrap_repository_url(cells[column]["href"])
         if url.startswith("https://"):
-            output.append({"repository_school": cells[0]["text"], "source_url": url})
+            output.append({
+                "repository_school": cells[0]["text"],
+                "source_url": url,
+                "cds_year": year,
+            })
     return output
 
 
@@ -173,7 +201,8 @@ def existing_document(row):
     override = LOCAL_SOURCE_OVERRIDES.get(row["repository_school"])
     if override is not None and override.exists():
         return override
-    matches = list(CDS_DIRECTORY.glob(local_stem(row) + ".*"))
+    directory = cds_directory(row.get("cds_year", CDS_YEAR))
+    matches = list(directory.glob(local_stem(row) + ".*"))
     return matches[0] if matches else None
 
 
@@ -185,7 +214,9 @@ def fetch_document(row):
     with urlopen(request, timeout=30) as response:
         data = response.read()
     extension = file_extension(data)
-    target = CDS_DIRECTORY / (local_stem(row) + extension)
+    directory = cds_directory(row.get("cds_year", CDS_YEAR))
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / (local_stem(row) + extension)
     partial = target.with_suffix(target.suffix + ".part")
     partial.write_bytes(data)
     partial.replace(target)
@@ -193,7 +224,6 @@ def fetch_document(row):
 
 
 def fetch_all(rows, workers=16):
-    CDS_DIRECTORY.mkdir(parents=True, exist_ok=True)
     failures = {}
     with ThreadPoolExecutor(max_workers=workers) as executor:
         jobs = {executor.submit(fetch_document, row): row for row in rows}
@@ -411,8 +441,8 @@ def distribution_statistics(values):
     }
 
 
-def extract_c10(path):
-    block = c10_block(normalize_extracted_text(document_text(path)))
+def extract_c10(text):
+    block = c10_block(normalize_extracted_text(text))
     if not block:
         return None
     values = complete_rank_values({
@@ -424,10 +454,7 @@ def extract_c10(path):
     consistent = complete and abs(
         values["top_50_pct"] + values["bottom_50_pct"] - 100
     ) <= 1.1
-    statistics = {
-        key: ""
-        for key in ("class_rank_q25", "class_rank_median", "class_rank_q75", "class_rank_mean")
-    }
+    statistics = {key: "" for key in STATISTIC_FIELDS}
     if consistent:
         statistics = distribution_statistics(values)
     return {
@@ -499,61 +526,91 @@ def match_school(name, graduates):
     return None
 
 
-def score_lookup(graduates, target_unitids, repository=None):
-    """Return parsed C10 results keyed by matched IPEDS institution."""
+def source_c10(source):
+    """Parse one repository document, returning its C10 fields and status."""
+    path = existing_document(source)
+    if path is None:
+        return path, None, "download failed"
+    text = document_text(path)
+    if not (
+        source["repository_school"] in LOCAL_SOURCE_OVERRIDES
+        or document_identity_matches(source["repository_school"], text)
+    ):
+        return path, None, "source identity mismatch"
+    result = extract_c10(text)
+    if result is None:
+        return path, None, "downloaded; C10 unavailable"
+    if result["class_rank_mean"] == "":
+        return path, result, "partial C10; insufficient for mean"
+    return path, result, "scored"
+
+
+def score_lookup(graduates, targets, admissions=None):
+    """C10 statistics for the target schools, keyed by IPEDS institution."""
+    rows = read_rank_table()
+    if not table_covers(rows, targets):
+        rows = build_rank_table(targets, graduates, admissions)
+        pathways.write_tsv(RANK_TABLE, rows)
+    wanted = {target["school_id"] for target in targets}
+    return {
+        row["unitid"]: row
+        for row in rows
+        if row["unitid"] in wanted and row["class_rank_mean"] != ""
+    }
+
+
+def read_rank_table(path=RANK_TABLE):
+    return pathways.read_tsv(path, RANK_TABLE_COLUMNS) if path.exists() else []
+
+
+def table_covers(rows, targets):
+    """Whether the derived table already reports every target school."""
+    scored = {normalize_school(row["school"]) for row in rows}
+    return all(normalize_school(target["school"]) in scored for target in targets)
+
+
+def build_rank_table(targets, graduates=None, admissions=None, repository=None,
+                     year=CDS_YEAR):
+    """Score the repository documents for the targets, one row per school."""
+    if graduates is None:
+        graduates = load_graduates()
+    if admissions is None:
+        admissions = ability.load_admissions()
     if repository is None:
-        repository = repository_rows()
-    output = {}
-    for source in repository:
-        path = existing_document(source)
-        text = document_text(path) if path is not None else ""
-        valid_source = path is not None and (
-            source["repository_school"] in LOCAL_SOURCE_OVERRIDES
-            or document_identity_matches(source["repository_school"], text)
-        )
-        result = extract_c10(path) if valid_source else None
-        if result is None:
-            continue
-        school = match_school(source["repository_school"], graduates)
-        if (
-            school is not None
-            and school["unitid"] in target_unitids
-            and result["class_rank_mean"] != ""
-        ):
-            output[school["unitid"]] = result
-    return output
+        repository = target_repository_rows(repository_rows(year=year), targets)
+    rows = scored_rows(repository, graduates, admissions)
+    indexed = {normalize_school(row["repository_school"]) for row in repository}
+    for target in targets:
+        if normalize_school(target["school"]) not in indexed:
+            rows.append({
+                "unitid": "",
+                "school": target["school"],
+                "repository_school": "",
+                "cds_year": year,
+                **EMPTY_C10,
+                "rank_reporting_freshmen_estimate": "",
+                "bachelors_2023": target["bachelors"],
+                "source_url": "",
+                "source_file": "",
+                "status": f"not indexed for {year}",
+            })
+    return rows
 
 
 def scored_rows(repository, graduates, admissions):
     output = []
     for source in repository:
-        path = existing_document(source)
-        text = document_text(path) if path is not None else ""
-        valid_source = path is not None and (
-            source["repository_school"] in LOCAL_SOURCE_OVERRIDES
-            or document_identity_matches(source["repository_school"], text)
-        )
-        result = extract_c10(path) if valid_source else None
+        path, result, status = source_c10(source)
         school = match_school(source["repository_school"], graduates)
         admission = admissions.get(school["unitid"], {}) if school else {}
         reporting = result.get("rank_reporting_pct") if result else None
         entrants = pathways.number(admission.get("ENRLT"))
-        if path is None:
-            status = "download failed"
-        elif not valid_source:
-            status = "source identity mismatch"
-        elif result is None:
-            status = "downloaded; C10 unavailable"
-        elif result["class_rank_mean"] == "":
-            status = "partial C10; insufficient for mean"
-        else:
-            status = "scored"
         output.append({
             "unitid": school["unitid"] if school else "",
             "school": school["institution"] if school else source["repository_school"],
             "repository_school": source["repository_school"],
-            "cds_year": "2019-20",
-            **(result or {key: "" for key in (*RANK_LABELS, "rank_reporting_pct", "class_rank_q25", "class_rank_median", "class_rank_q75", "class_rank_mean")}),
+            "cds_year": source["cds_year"],
+            **(result or EMPTY_C10),
             "rank_reporting_freshmen_estimate": (
                 entrants * reporting / 100 if entrants and reporting is not None else ""
             ),
@@ -581,28 +638,12 @@ def main():
     args = parser.parse_args()
     if args.fetch and not REPOSITORY_HTML.exists():
         fetch_repository_index()
-    all_repository = repository_rows()
     targets = top_sample_from_tsv()
-    repository = target_repository_rows(all_repository, targets)
+    repository = target_repository_rows(repository_rows(), targets)
     failures = fetch_all(repository, args.workers) if args.fetch else {}
     fetched = len(repository) - len(failures) if args.fetch else 0
-    rows = scored_rows(repository, load_graduates(), ability.load_admissions())
-    indexed = {normalize_school(row["repository_school"]) for row in repository}
-    for target in targets:
-        if normalize_school(target["school"]) not in indexed:
-            rows.append({
-                "unitid": "",
-                "school": target["school"],
-                "repository_school": "",
-                "cds_year": "2019-20",
-                **{key: "" for key in (*RANK_LABELS, "rank_reporting_pct", "class_rank_q25", "class_rank_median", "class_rank_q75", "class_rank_mean")},
-                "rank_reporting_freshmen_estimate": "",
-                "bachelors_2023": target["bachelors"],
-                "source_url": "",
-                "source_file": "",
-                "status": "not indexed for 2019-20",
-            })
-    pathways.write_tsv(pathways.DERIVED / "class_rank.tsv", rows)
+    rows = build_rank_table(targets, repository=repository)
+    pathways.write_tsv(RANK_TABLE, rows)
     scored = [row for row in rows if row["status"] == "scored"]
     matched = [row for row in scored if row["unitid"] != ""]
     bachelors = sum(row["bachelors_2023"] for row in matched)
