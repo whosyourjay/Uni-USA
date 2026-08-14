@@ -38,34 +38,15 @@ UC_AUDIT_SOURCE = (
 ACADEMY_SOURCE = "https://www.congress.gov/crs-product/IF11788"
 
 
-def benchmark_rows(graduates, admissions, enrollment):
-    all_first_time = sum(
-        row["fall_first_time_entrants_2019"]
-        for row in ability.admission_path_rows(
-            graduates, admissions, ability.load_characteristics(), enrollment
-        )
-    )
-    considerations = {
-        row["basis"]: row
-        for row in ability.consideration_rows(graduates, admissions)
-    }
-    portfolio_exposure = considerations["Formal competencies or portfolio"][
-        "required_enrolled"
-    ]
-    academy_domestic = sum(
-        enrollment.get(unitid, {}).get("domestic", 0)
-        for unitid in SERVICE_ACADEMY_UNITIDS
-    )
-
-    return [
-        {
+BENCHMARKS = (
+    {
             "item": "Service-academy nomination",
             "classification": "selection route",
             "benchmark": "Four nomination-based federal service academies",
             "cohort": "fall 2019",
-            "numerator": academy_domestic,
-            "denominator": all_first_time,
-            "rate": academy_domestic / all_first_time,
+            "numerator": "",
+            "denominator": "",
+            "rate": "",
             "measure": "domestic first-time entrants / all first-time entrants",
             "ability_evidence": (
                 "Academy SAT/ACT bars plus nomination, academic, physical, and "
@@ -74,15 +55,16 @@ def benchmark_rows(graduates, admissions, enrollment):
             "national_route_count": "yes",
             "additive": "yes within freshman paths",
             "source": f"IPEDS EF2019A; {ACADEMY_SOURCE}",
+            "measured": "service academies",
         },
         {
             "item": "Audition or portfolio",
             "classification": "selection route",
             "benchmark": "Institutions reporting formal competency/portfolio required",
             "cohort": "fall 2019",
-            "numerator": portfolio_exposure,
-            "denominator": all_first_time,
-            "rate": portfolio_exposure / all_first_time,
+            "numerator": "",
+            "denominator": "",
+            "rate": "",
             "measure": "entrants exposed to an institution-level requirement",
             "ability_evidence": (
                 "Upper exposure bound, not the number admitted through an audition "
@@ -91,6 +73,7 @@ def benchmark_rows(graduates, admissions, enrollment):
             "national_route_count": "no",
             "additive": "no: requirement may apply only to particular programs",
             "source": "IPEDS ADM2019 formal competencies/portfolio consideration",
+            "measured": "formal competencies or portfolio",
         },
         {
             "item": "Early action",
@@ -174,7 +157,48 @@ def benchmark_rows(graduates, admissions, enrollment):
             "additive": "yes within UT's Texas-resident freshman spaces",
             "source": UT_AUTOMATIC_SOURCE,
         },
-    ]
+)
+
+
+def measured_numerators(graduates, admissions, enrollment):
+    """Entrant counts for the two benchmarks IPEDS can size directly."""
+    considerations = {
+        row["basis"]: row
+        for row in ability.consideration_rows(graduates, admissions)
+    }
+    return {
+        "service academies": sum(
+            enrollment.get(unitid, {}).get("domestic", 0)
+            for unitid in SERVICE_ACADEMY_UNITIDS
+        ),
+        "formal competencies or portfolio": considerations[
+            "Formal competencies or portfolio"
+        ]["required_enrolled"],
+    }
+
+
+def benchmark_rows(graduates, admissions, enrollment):
+    """Fill the measured benchmarks against the national first-time entrants."""
+    numerators = measured_numerators(graduates, admissions, enrollment)
+    entrants = sum(
+        row["fall_first_time_entrants_2019"]
+        for row in ability.admission_path_rows(
+            graduates, admissions, ability.load_characteristics(), enrollment
+        )
+    )
+    rows = []
+    for benchmark in BENCHMARKS:
+        row = dict(benchmark)
+        measured = row.pop("measured", None)
+        if measured is not None:
+            numerator = numerators[measured]
+            row.update(
+                numerator=numerator,
+                denominator=entrants,
+                rate=numerator / entrants,
+            )
+        rows.append(row)
+    return rows
 
 
 def main():
