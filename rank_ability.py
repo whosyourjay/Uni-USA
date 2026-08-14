@@ -39,10 +39,17 @@ def within_school_sd(class_sd, between=BETWEEN_SCHOOL_VARIANCE):
     return math.sqrt(shrink_factor(between) ** 2 * class_sd**2 + between)
 
 
+def normal_upper_tail(z):
+    """Normal probability above `z`, where `1 - cdf` would cancel to noise."""
+    return 0.5 * math.erfc(z / math.sqrt(2))
+
+
 def predicted_top_decile(national_z, class_sd, between=BETWEEN_SCHOOL_VARIANCE):
     """Share of a class centered at `national_z` ranking in its top tenth."""
     mean = shrink_factor(between) * national_z
-    return 1 - NORMAL.cdf((TOP_DECILE_CUT - mean) / within_school_sd(class_sd, between))
+    return normal_upper_tail(
+        (TOP_DECILE_CUT - mean) / within_school_sd(class_sd, between)
+    )
 
 
 def national_ability(top_10, class_sd, between=BETWEEN_SCHOOL_VARIANCE):

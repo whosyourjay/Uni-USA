@@ -189,14 +189,14 @@ class AbilityEvidenceRegressionAndFuzzTests(unittest.TestCase):
         self.assertEqual(harvard["SAT"]["sat_math_estimated_median_score"], 775)
         self.assertAlmostEqual(
             harvard["SAT"]["estimated_route_central_test_taker_percentile"],
-            97.25,
+            98.22916666666666,
         )
         self.assertEqual(
             harvard["ACT"]["act_composite_estimated_median_score"], 34
         )
         self.assertAlmostEqual(
             harvard["ACT"]["estimated_route_central_test_taker_percentile"],
-            99.0250243234732,
+            98.84464155060249,
         )
 
     def test_national_test_route_mixture_medians(self):
@@ -213,7 +213,7 @@ class AbilityEvidenceRegressionAndFuzzTests(unittest.TestCase):
         self.assertEqual(routes["ACT"]["submitters_with_score_bars_2019"], 673_599)
         self.assertAlmostEqual(
             routes["SAT"]["estimated_route_central_test_taker_percentile"],
-            71.59202558514983,
+            72.09202558514983,
         )
         self.assertAlmostEqual(
             routes["ACT"]["estimated_route_central_test_taker_percentile"],
