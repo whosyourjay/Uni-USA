@@ -12,7 +12,7 @@ class PoolRatioTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.sat_table = calibrate_tests.load_sat_total_user_percentiles(2019)
-        cls.act_counts = sat_seat_ratio.national_act_counts()
+        cls.act_counts = sat_seat_ratio.national_act_counts(2019)
         cls.sat_takers = sat_seat_ratio.national_sat_takers(2019)
 
     def pools(self, admission):

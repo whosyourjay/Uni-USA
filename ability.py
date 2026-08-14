@@ -7,12 +7,10 @@ by pandemic-era test-optional and test-blind changes, and it overlaps naturally
 with the students completing bachelor's degrees four years later.
 """
 
-from pathlib import Path
-
 import pathways
 
-ROOT = Path(__file__).parent
-DERIVED = ROOT / "derived"
+ROOT = pathways.ROOT
+DERIVED = pathways.DERIVED
 ADMISSION_YEAR = 2019
 SAT_FIELDS = ("SATVR25", "SATVR75", "SATMT25", "SATMT75")
 ACT_FIELDS = ("ACTCM25", "ACTCM75")

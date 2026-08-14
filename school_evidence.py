@@ -8,6 +8,8 @@ import re
 import sys
 
 import ability
+import cds_c10
+import cds_documents
 import class_rank
 import pathways
 import rank_ability
@@ -103,11 +105,11 @@ def cds_history(school):
     """Parse every locally fetched Common Data Set for one school."""
     slug = re.sub(r"[^a-z0-9]+", "-", school.lower()).strip("-")
     rows = []
-    for year in sorted(class_rank.CDS_YEAR_COLUMNS, reverse=True):
-        matches = list(class_rank.cds_directory(year).glob(f"{slug}--*"))
+    for year in sorted(cds_documents.CDS_YEAR_COLUMNS, reverse=True):
+        matches = list(cds_documents.cds_directory(year).glob(f"{slug}--*"))
         if not matches:
             continue
-        result = class_rank.extract_c10(class_rank.document_text(matches[0]))
+        result = cds_c10.extract_c10(cds_documents.document_text(matches[0]))
         if result:
             rows.append({"cds_year": year, **result})
     return rows

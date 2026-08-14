@@ -27,7 +27,7 @@ import pathways
 NORMAL = NormalDist()
 BETWEEN_SCHOOL_VARIANCE = 0.28
 TOP_DECILE_CUT = NORMAL.inv_cdf(0.90)
-SCHOOL_TABLE = class_rank.ROOT / "schools.tsv"
+SCHOOL_TABLE = class_rank.SCHOOL_TABLE
 
 
 def shrink_factor(between=BETWEEN_SCHOOL_VARIANCE):
