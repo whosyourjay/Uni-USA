@@ -3,5 +3,6 @@ __pycache__/
 derived/
 schools.tsv
 majors.tsv
+test_evidence.html
 sources/*
 !sources/README.md

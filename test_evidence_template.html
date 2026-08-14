@@ -1,0 +1,501 @@
+<title>What the test columns measure</title>
+<style>
+  :root {
+    --page: #f2f3f6;
+    --card: #ffffff;
+    --ink: #171a21;
+    --ink-2: #4a5261;
+    --ink-3: #7a8393;
+    --rule: #dfe2e9;
+    --entrants: #5b6577;
+    --submissions: #2d5bd1;
+    --unscored: #c0611e;
+    --wash: rgba(192, 97, 30, 0.14);
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #101317;
+      --card: #191d24;
+      --ink: #e7eaf1;
+      --ink-2: #aab3c2;
+      --ink-3: #79828f;
+      --rule: #2a2f39;
+      --entrants: #98a2b4;
+      --submissions: #6e9bff;
+      --unscored: #e08a3c;
+      --wash: rgba(224, 138, 60, 0.16);
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #101317;
+    --card: #191d24;
+    --ink: #e7eaf1;
+    --ink-2: #aab3c2;
+    --ink-3: #79828f;
+    --rule: #2a2f39;
+    --entrants: #98a2b4;
+    --submissions: #6e9bff;
+    --unscored: #e08a3c;
+    --wash: rgba(224, 138, 60, 0.16);
+  }
+  :root[data-theme="light"] {
+    --page: #f2f3f6;
+    --card: #ffffff;
+    --ink: #171a21;
+    --ink-2: #4a5261;
+    --ink-3: #7a8393;
+    --rule: #dfe2e9;
+    --entrants: #5b6577;
+    --submissions: #2d5bd1;
+    --unscored: #c0611e;
+    --wash: rgba(192, 97, 30, 0.14);
+  }
+
+  body {
+    margin: 0;
+    padding: 0 20px 72px;
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 940px; margin: 0 auto; display: flex; flex-direction: column; gap: 30px; }
+  header { padding: 56px 0 6px; display: flex; flex-direction: column; gap: 14px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst { margin: 0; max-width: 64ch; color: var(--ink-2); font-size: 17px; }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .tile {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 16px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .tile .value {
+    font-family: var(--mono);
+    font-size: 27px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .tile .label { font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+  .tile.warn .value { color: var(--unscored); }
+
+  section {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 22px 22px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  h2 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+  .note { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 68ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--ink-2); }
+  .key { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 13px; height: 3px; border-radius: 2px; background: var(--ink-3); }
+  .swatch.block { height: 11px; width: 11px; border-radius: 2px; }
+  .chart { position: relative; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .axis { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-3); }
+  .mark-label { font-family: var(--mono); font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .grid { stroke: var(--rule); stroke-width: 1; }
+  .hit { fill: transparent; cursor: crosshair; }
+
+  .tip {
+    position: absolute;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -100%);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.13);
+    transition: opacity 0.12s ease;
+    z-index: 3;
+  }
+  .tip b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .tip .row { display: flex; gap: 10px; justify-content: space-between; color: var(--ink-2); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+  th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  td.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: none; }
+  .bar-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .bar-cell i { display: block; height: 9px; border-radius: 2px; background: var(--unscored); }
+  .pill {
+    display: inline-block;
+    font-size: 11.5px;
+    padding: 1px 8px;
+    border-radius: 2px;
+    border: 1px solid var(--rule);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .scroller { overflow-x: auto; }
+  details { font-size: 14px; color: var(--ink-2); }
+  summary { cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
+  details[open] summary { margin-bottom: 10px; }
+  footer { color: var(--ink-3); font-size: 13px; max-width: 70ch; }
+  footer code { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">IPEDS ADM · top of the ranking · entering classes 2014–2023</div>
+    <h1>The top 100 kept reporting. Their students stopped testing.</h1>
+    <p class="standfirst">
+      Every school in the top 100 of <code>schools.tsv</code> files submitter counts — the
+      first blank sits at rank 1,224. What changed is the students behind those counts.
+      Through 2020 the top 100 collected <strong>more test submissions than it had
+      entrants</strong>, because students sent both the SAT and the ACT. In 2021 that inverted
+      in a single year, and it has not come back.
+    </p>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section>
+    <h2>Top 100: submissions fell below the entering class in 2021</h2>
+    <p class="note">
+      Both lines cover the top-100 schools reporting submitters that year — 93 to 100 of them,
+      never fewer. Students who send both tests are counted twice, so submissions ran 11–16%
+      above the entering class until 2020, then dropped to 64% of it in one year. The shaded
+      band is the remainder that <code>no_test_pct</code> estimates.
+    </p>
+    <div class="legend">
+      <span class="key"><span class="swatch" style="background:var(--entrants)"></span> Entering class (ENRLT)</span>
+      <span class="key"><span class="swatch" style="background:var(--submissions)"></span> SAT + ACT submissions</span>
+      <span class="key"><span class="swatch block" style="background:var(--wash)"></span> Unscored remainder</span>
+    </div>
+    <div class="chart" id="trend"></div>
+    <details>
+      <summary>Top 100, annual figures</summary>
+      <div class="scroller"><table id="hundred-table"></table></div>
+    </details>
+  </section>
+
+  <section>
+    <h2>Top 10: the remainder is a 2021 event, not a trend</h2>
+    <p class="note">
+      Six straight years under 25 students, then 1,952. Averaging 2014–2023 folds that cliff
+      into every mean; a 2014–2019 window would leave the top ten essentially fully scored.
+      The cohort also thins as it breaks — all ten reported through 2020, seven in 2021 — so
+      part of the drop is schools going quiet rather than students arriving untested.
+    </p>
+    <div class="chart" id="remainder"></div>
+    <details>
+      <summary>Top 10, annual figures</summary>
+      <div class="scroller"><table id="ten-table"></table></div>
+    </details>
+  </section>
+
+  <section>
+    <h2>For context: every blank sits below rank 1,223</h2>
+    <p class="note">
+      Share of each rank band with no submitter count in any of the ten years. Of the 899
+      blanks, 518 are open-admission and 604 report no admission-test policy at all — they are
+      not selective schools that quietly stopped reporting.
+    </p>
+    <div class="chart" id="bands"></div>
+  </section>
+
+  <section>
+    <h2>The top ten are measured, not estimated</h2>
+    <p class="note">
+      Caltech is the one to watch: it went test-blind, stopped reporting after 2020, and its
+      mean now rests on seven pre-2021 years. Treating those missing years as unreported
+      rather than unscored is what keeps its estimate at 3%.
+    </p>
+    <div class="scroller"><table id="top-table"></table></div>
+  </section>
+
+  <section>
+    <h2>Nine schools in the top 100 estimate over a quarter unscored</h2>
+    <p class="note">
+      The pattern is sparse reporting, not admissions philosophy. Trinity and Connecticut
+      College report in 6 of 10 years, Holy Cross and Union in 5 — and the years they do
+      report already carry a large unscored share. IPEDS records class rank as "considered but
+      not required" at all nine, so it cannot say what replaced the tests.
+    </p>
+    <div class="scroller"><table id="heavy-table"></table></div>
+  </section>
+
+  <footer>
+    Cohorts are fixed: the top 100 and top 10 of <code>schools.tsv</code> as ranked today,
+    followed backwards through <code>ADM2014–ADM2023</code>. A school counts in a year only if
+    it reports an entering class and at least one submitter, so the reporting column carries
+    the schools that went quiet. <code>no_test_pct</code> averages
+    <code>max(0, ENRLT − SAT − ACT) / ENRLT</code> over those years as a percentage of the
+    entering class.
+  </footer>
+</main>
+
+<script>
+const DATA = __DATA__;
+const NS = "http://www.w3.org/2000/svg";
+const fmt = new Intl.NumberFormat("en-US");
+const pct = (value, digits = 0) => (value * 100).toFixed(digits) + "%";
+
+function el(name, attrs = {}, parent) {
+  const node = document.createElementNS(NS, name);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  if (parent) parent.appendChild(node);
+  return node;
+}
+
+function frame(host, width, height) {
+  const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img" }, host);
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  host.appendChild(tip);
+
+  // The chart scales to its container, so viewBox units become pixels only here.
+  const place = (x, y, html) => {
+    tip.innerHTML = html;
+    const box = svg.getBoundingClientRect();
+    const scale = box.width / width;
+    const half = tip.offsetWidth / 2 + 4;
+    tip.style.left = `${Math.min(Math.max(x * scale, half), box.width - half)}px`;
+    tip.style.top = `${Math.max(y * scale, tip.offsetHeight + 6)}px`;
+    tip.style.opacity = "1";
+  };
+  const hide = () => { tip.style.opacity = "0"; };
+  return { svg, place, hide };
+}
+
+function tiles() {
+  const year = (rows, value) => rows.find((row) => row.year === value);
+  const ratio = (row) => ((row.sat + row.act) / row.entrants).toFixed(2);
+  const hundred19 = year(DATA.hundred, 2019), hundred23 = year(DATA.hundred, 2023);
+  const ten19 = year(DATA.ten, 2019), ten23 = year(DATA.ten, 2023);
+  const rows = [
+    ["0 of 100", "top-100 schools without a submitter count; the first blank is rank 1,224", false],
+    [`${ratio(hundred19)} → ${ratio(hundred23)}`, "test submissions per entrant, top 100, 2019 to 2023", false],
+    [`${pct(ten19.unscored / ten19.entrants, 1)} → ${pct(ten23.unscored / ten23.entrants, 1)}`,
+      "of the top ten's entering class unscored, 2019 to 2023", true],
+    [`${hundred23.schools} of 100`, `top-100 schools reporting in 2023, against ${hundred19.schools} in 2019`, false],
+  ];
+  document.getElementById("tiles").innerHTML = rows
+    .map(([value, label, warn]) =>
+      `<div class="tile${warn ? " warn" : ""}"><span class="value">${value}</span><span class="label">${label}</span></div>`)
+    .join("");
+}
+
+function trend() {
+  const host = document.getElementById("trend");
+  const W = 1000, H = 380, L = 54, R = 96, T = 16, B = 34;
+  const { svg, place, hide } = frame(host, W, H);
+  const rows = DATA.hundred;
+  const max = 210000;
+  const x = (i) => L + (i * (W - L - R)) / (rows.length - 1);
+  const y = (v) => T + (1 - v / max) * (H - T - B);
+
+  for (let value = 0; value <= max; value += 70000) {
+    el("line", { class: "grid", x1: L, x2: W - R, y1: y(value), y2: y(value) }, svg);
+    el("text", { class: "axis", x: L - 10, y: y(value) + 4, "text-anchor": "end" }, svg)
+      .textContent = value ? `${value / 1000}k` : "0";
+  }
+  rows.forEach((row, i) => {
+    el("text", { class: "axis", x: x(i), y: H - 12, "text-anchor": "middle" }, svg)
+      .textContent = `’${String(row.year).slice(2)}`;
+  });
+
+  const submissions = rows.map((row) => row.sat + row.act);
+  const gap = [];
+  rows.forEach((row, i) => { if (submissions[i] < row.entrants) gap.push(i); });
+  if (gap.length) {
+    const start = Math.max(0, gap[0] - 1);
+    const span = [];
+    for (let i = start; i <= gap[gap.length - 1]; i += 1) span.push(i);
+    const top = span.map((i) => `${x(i)},${y(rows[i].entrants)}`).join(" ");
+    const bottom = span.slice().reverse().map((i) => `${x(i)},${y(submissions[i])}`).join(" ");
+    el("polygon", { points: `${top} ${bottom}`, fill: "var(--wash)" }, svg);
+  }
+
+  const line = (values, color) => el("polyline", {
+    points: values.map((value, i) => `${x(i)},${y(value)}`).join(" "),
+    fill: "none", stroke: color, "stroke-width": 2,
+    "stroke-linejoin": "round", "stroke-linecap": "round",
+  }, svg);
+  line(rows.map((row) => row.entrants), "var(--entrants)");
+  line(submissions, "var(--submissions)");
+
+  const label = (value, color, text, dy) => {
+    el("text", { class: "mark-label", x: W - R + 10, y: y(value) + dy, fill: color }, svg)
+      .textContent = text;
+  };
+  const final = rows[rows.length - 1];
+  label(final.entrants, "var(--entrants)", `${fmt.format(final.entrants)} entrants`, 4);
+  label(submissions[submissions.length - 1], "var(--submissions)",
+    `${fmt.format(submissions[submissions.length - 1])} submitted`, 4);
+
+  rows.forEach((row, i) => {
+    const marker = (value, color) => el("circle", {
+      cx: x(i), cy: y(value), r: 3.4, fill: color,
+      stroke: "var(--card)", "stroke-width": 2,
+    }, svg);
+    marker(row.entrants, "var(--entrants)");
+    marker(submissions[i], "var(--submissions)");
+    const hit = el("rect", {
+      class: "hit", x: x(i) - 26, y: T, width: 52, height: H - T - B,
+    }, svg);
+    hit.addEventListener("mouseenter", () => place(x(i), y(Math.max(row.entrants, submissions[i])) - 14,
+      `<b>${row.year}</b> · ${row.schools} of 100 reporting
+       <div class="row"><span>Entering class</span><b>${fmt.format(row.entrants)}</b></div>
+       <div class="row"><span>SAT + ACT</span><b>${fmt.format(submissions[i])}</b></div>
+       <div class="row"><span>Unscored</span><b>${fmt.format(row.unscored)}</b></div>`));
+    hit.addEventListener("mouseleave", hide);
+  });
+}
+
+function remainder() {
+  const host = document.getElementById("remainder");
+  const W = 1000, H = 210, L = 54, R = 96, T = 14, B = 30;
+  const { svg, place, hide } = frame(host, W, H);
+  const rows = DATA.ten;
+  const max = 3000;
+  const band = (W - L - R) / rows.length;
+  const y = (v) => T + (1 - v / max) * (H - T - B);
+
+  for (let value = 0; value <= max; value += 1500) {
+    el("line", { class: "grid", x1: L, x2: W - R, y1: y(value), y2: y(value) }, svg);
+    el("text", { class: "axis", x: L - 10, y: y(value) + 4, "text-anchor": "end" }, svg)
+      .textContent = value ? `${value / 1000}k` : "0";
+  }
+  rows.forEach((row, i) => {
+    const height = Math.max(2, y(0) - y(row.unscored));
+    el("rect", {
+      x: L + i * band + 3, y: y(row.unscored), width: band - 6, height,
+      rx: 3, fill: "var(--unscored)",
+    }, svg);
+    el("text", { class: "axis", x: L + i * band + band / 2, y: H - 10, "text-anchor": "middle" }, svg)
+      .textContent = `’${String(row.year).slice(2)}`;
+    const hit = el("rect", { class: "hit", x: L + i * band, y: T, width: band, height: H - T - B }, svg);
+    hit.addEventListener("mouseenter", () => place(L + i * band + band / 2, y(row.unscored) - 12,
+      `<b>${row.year}</b> · ${row.schools} of 10 reporting
+       <div class="row"><span>Unscored</span><b>${fmt.format(row.unscored)}</b></div>
+       <div class="row"><span>Share of class</span><b>${pct(row.unscored / row.entrants, 1)}</b></div>`));
+    hit.addEventListener("mouseleave", hide);
+  });
+  const final = rows[rows.length - 1];
+  el("text", { class: "mark-label", x: W - R + 10, y: y(final.unscored) + 4, fill: "var(--unscored)" }, svg)
+    .textContent = `${fmt.format(final.unscored)} in 2023`;
+  el("text", { class: "mark-label", x: W - R + 10, y: y(final.unscored) + 22, fill: "var(--ink-3)" }, svg)
+    .textContent = "22 in 2019";
+}
+
+function bands() {
+  const host = document.getElementById("bands");
+  const rows = DATA.bands;
+  const W = 1000, rowH = 26, T = 8, L = 128, R = 74;
+  const H = T + rows.length * rowH + 6;
+  const { svg, place, hide } = frame(host, W, H);
+  const scale = (share) => share * (W - L - R);
+  rows.forEach((row, i) => {
+    const y = T + i * rowH;
+    const share = row.blank / row.schools;
+    el("text", { class: "axis", x: L - 12, y: y + 15, "text-anchor": "end" }, svg)
+      .textContent = `${fmt.format(row.start)}–${fmt.format(row.start + row.schools - 1)}`;
+    el("rect", { x: L, y: y + 5, width: W - L - R, height: 13, rx: 3, fill: "var(--rule)" }, svg);
+    if (share > 0) {
+      el("rect", { x: L, y: y + 5, width: Math.max(3, scale(share)), height: 13, rx: 3, fill: "var(--submissions)" }, svg);
+    }
+    el("text", { class: "mark-label", x: L + scale(share) + 10, y: y + 16 }, svg)
+      .textContent = share > 0 ? pct(share) : "none";
+    const hit = el("rect", { class: "hit", x: L, y, width: W - L, height: rowH }, svg);
+    hit.addEventListener("mouseenter", () => place(L + scale(share) + 40, y,
+      `<b>Ranks ${fmt.format(row.start)}–${fmt.format(row.start + row.schools - 1)}</b>
+       <div class="row"><span>No submitter count</span><b>${row.blank} of ${row.schools}</b></div>`));
+    hit.addEventListener("mouseleave", hide);
+  });
+}
+
+function tables() {
+  const policy = (label) => label.replace("considered but not required", "test-optional")
+    .replace("neither required nor recommended", "test-blind");
+  const annual = (id, rows) => {
+    document.getElementById(id).innerHTML =
+      `<thead><tr><th>Year</th><th>Reporting</th><th>Entering class</th><th>SAT</th><th>ACT</th>
+       <th>Per entrant</th><th>Unscored</th></tr></thead><tbody>` +
+      rows.map((row) =>
+        `<tr><td class="num">${row.year}</td><td class="num">${row.schools}/${row.cohort}</td>
+         <td class="num">${fmt.format(row.entrants)}</td><td class="num">${fmt.format(row.sat)}</td>
+         <td class="num">${fmt.format(row.act)}</td>
+         <td class="num">${((row.sat + row.act) / row.entrants).toFixed(2)}</td>
+         <td class="num">${fmt.format(row.unscored)}</td></tr>`).join("") +
+      `</tbody>`;
+  };
+  annual("hundred-table", DATA.hundred);
+  annual("ten-table", DATA.ten);
+
+  const shareCell = (share) =>
+    `<div class="bar-cell"><i style="width:${Math.max(2, share * 90)}px"></i><span>${pct(share, 1)}</span></div>`;
+
+  document.getElementById("top-table").innerHTML =
+    `<thead><tr><th>Rank</th><th>School</th><th>Years reporting</th><th>Unscored share</th><th>2023 policy</th></tr></thead><tbody>` +
+    DATA.top.map((row) =>
+      `<tr><td class="num">${row.position}</td><td>${row.school}</td>
+       <td class="num">${row.years}/10</td><td class="num">${shareCell(row.share)}</td>
+       <td><span class="pill">${policy(row.policy)}</span></td></tr>`).join("") +
+    `</tbody>`;
+
+  document.getElementById("heavy-table").innerHTML =
+    `<thead><tr><th>Rank</th><th>School</th><th>Years reporting</th><th>Unscored share</th><th>Mean awards</th></tr></thead><tbody>` +
+    DATA.heavy.map((row) =>
+      `<tr><td class="num">${row.position}</td><td>${row.school}</td>
+       <td class="num">${row.years}/10</td><td class="num">${shareCell(row.share)}</td>
+       <td class="num">${fmt.format(Math.round(row.bachelors))}</td></tr>`).join("") +
+    `</tbody>`;
+}
+
+tiles();
+trend();
+remainder();
+bands();
+tables();
+</script>
