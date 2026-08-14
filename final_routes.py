@@ -123,18 +123,9 @@ def institution_route_rows(graduates, admissions, characteristics, population):
 def portfolio_bachelor_counts():
     """Domestic architecture and visual/performing-arts bachelor's awards."""
     totals = defaultdict(int)
-    for row in pathways.zip_rows("C2023_A.zip"):
-        cip = row["CIPCODE"].strip()
-        if (
-            pathways.number(row["AWLEVEL"]) == 5
-            and pathways.number(row["MAJORNUM"]) == 1
-            and cip != "99"
-            and cip.split(".", 1)[0] in {"04", "50"}
-        ):
-            totals[pathways.number(row["UNITID"])] += (
-                pathways.number(row["CTOTALT"])
-                - pathways.number(row["CNRALT"])
-            )
+    for row in pathways.bachelor_major_awards():
+        if row["cip_code"].split(".", 1)[0] in {"04", "50"}:
+            totals[row["unitid"]] += row["awards_domestic"]
     return totals
 
 
@@ -214,17 +205,9 @@ def national_route_rows(institution_rows, graduates, population):
 def domestic_award_levels():
     """Domestic annual award totals for the pre-bachelor levels in C2023_A."""
     totals = defaultdict(int)
-    for row in pathways.zip_rows("C2023_A.zip"):
-        level = pathways.number(row["AWLEVEL"])
-        if (
-            level in {2, 3, 4, 20, 21}
-            and row["CIPCODE"].strip() == "99"
-            and pathways.number(row["MAJORNUM"]) == 1
-        ):
-            totals[level] += (
-                pathways.number(row["CTOTALT"])
-                - pathways.number(row["CNRALT"])
-            )
+    for row in pathways.first_major_awards():
+        if row["award_level"] in {2, 3, 4, 20, 21} and row["cip_code"] == "99":
+            totals[row["award_level"]] += row["awards_domestic"]
     return totals
 
 

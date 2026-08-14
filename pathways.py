@@ -5,11 +5,29 @@ import csv
 import io
 import zipfile
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 SOURCES = ROOT / "sources"
 DERIVED = ROOT / "derived"
+COMPLETION_YEARS = tuple(range(2014, 2024))
+COMPLETION_SOURCES = {year: f"C{year}_A.zip" for year in COMPLETION_YEARS}
+LATEST_COMPLETIONS = COMPLETION_SOURCES[COMPLETION_YEARS[-1]]
+AWARD_TABLE = DERIVED / "first_major_awards.tsv"
+SCHOOL_YEAR_TABLE = DERIVED / "school_bachelors_by_year.tsv"
+MAJOR_MEAN_TABLE = DERIVED / "major_bachelor_means.tsv"
+AWARD_COLUMNS = {
+    "unitid": int,
+    "cip_code": str,
+    "award_level": int,
+    "awards_all": int,
+    "awards_domestic": int,
+}
+SCHOOL_YEAR_COLUMNS = {
+    "year": int, "unitid": int, "awards_all": int, "awards_domestic": int,
+}
+MAJOR_MEAN_COLUMNS = {"unitid": int, "cip_code": str, "mean_domestic": float}
 ENTRY_LEVELS = {4: "first_time", 19: "transfer"}
 OM_COHORTS = {10: "direct_full_time", 20: "direct_part_time",
               30: "transfer_full_time", 40: "transfer_part_time"}
@@ -22,7 +40,8 @@ def number(value):
     return int(value) if value not in {"", "."} else 0
 
 
-def zip_rows(filename, member=None):
+def zip_values(filename, member=None):
+    """Yield the header row and then each value row of a zipped CSV."""
     with zipfile.ZipFile(SOURCES / filename) as archive:
         if member is None:
             names = [name for name in archive.namelist()
@@ -32,7 +51,137 @@ def zip_rows(filename, member=None):
             member = names[0]
         with archive.open(member) as raw:
             text = io.TextIOWrapper(raw, encoding="utf-8-sig", newline="")
-            yield from csv.DictReader(text)
+            yield from csv.reader(text)
+
+
+def zip_rows(filename, member=None):
+    values = zip_values(filename, member)
+    header = next(values)
+    for row in values:
+        yield dict(zip(header, row))
+
+
+def read_tsv(path, columns=None):
+    """Read a TSV into dicts, converting the columns named in `columns`."""
+    with path.open(encoding="utf-8", newline="") as source:
+        reader = csv.reader(source, delimiter="\t")
+        header = next(reader)
+        casts = [(columns or {}).get(name) for name in header]
+        return [
+            {
+                name: cast(value) if cast else value
+                for name, cast, value in zip(header, casts, row)
+            }
+            for row in reader
+        ]
+
+
+def is_stale(path, sources):
+    """Whether a derived table is missing or older than any source it reads."""
+    if not path.exists():
+        return True
+    stamp = path.stat().st_mtime
+    return any(
+        (SOURCES / source).exists() and (SOURCES / source).stat().st_mtime > stamp
+        for source in sources
+    )
+
+
+def preprocessed_rows(path, source, build, columns):
+    """Read a derived table, rebuilding it whenever its source is newer."""
+    if is_stale(path, (source,)):
+        write_tsv(path, build())
+    return read_tsv(path, columns)
+
+
+def build_award_rows(source=None):
+    """First-major award counts, the only completions rows the model uses."""
+    values = zip_values(source or LATEST_COMPLETIONS)
+    index = {name: position for position, name in enumerate(next(values))}
+    major = index["MAJORNUM"]
+    picked = [index[name] for name in
+              ("UNITID", "CIPCODE", "AWLEVEL", "CTOTALT", "CNRALT")]
+    rows = []
+    for row in values:
+        if number(row[major]) != 1:
+            continue
+        unitid, cip, level, total, foreign = (row[position] for position in picked)
+        rows.append({
+            "unitid": number(unitid),
+            "cip_code": cip.strip(),
+            "award_level": number(level),
+            "awards_all": number(total),
+            "awards_domestic": number(total) - number(foreign),
+        })
+    return rows
+
+
+@lru_cache(maxsize=1)
+def first_major_awards():
+    return tuple(preprocessed_rows(
+        AWARD_TABLE, LATEST_COMPLETIONS, build_award_rows, AWARD_COLUMNS
+    ))
+
+
+def bachelor_major_awards():
+    """Per-major bachelor's awards, excluding the CIP 99 institution totals."""
+    return [
+        row for row in first_major_awards()
+        if row["award_level"] == 5 and row["cip_code"] != "99"
+    ]
+
+
+def build_bachelor_tables():
+    """Annual institution totals and mean per-major awards over every year."""
+    schools, totals, years = [], defaultdict(int), defaultdict(int)
+    for year, source in COMPLETION_SOURCES.items():
+        for row in build_award_rows(source):
+            if row["award_level"] != 5:
+                continue
+            if row["cip_code"] == "99":
+                schools.append({
+                    "year": year,
+                    "unitid": row["unitid"],
+                    "awards_all": row["awards_all"],
+                    "awards_domestic": row["awards_domestic"],
+                })
+                years[row["unitid"]] += 1
+            elif row["awards_domestic"] > 0:
+                totals[(row["unitid"], row["cip_code"])] += row["awards_domestic"]
+    majors = [
+        {"unitid": unitid, "cip_code": cip, "mean_domestic": total / years[unitid]}
+        for (unitid, cip), total in sorted(totals.items())
+        if years[unitid]
+    ]
+    return schools, majors
+
+
+@lru_cache(maxsize=1)
+def bachelor_tables():
+    """Cached multi-year bachelor's tables, preprocessed from the IPEDS zips."""
+    paths = (SCHOOL_YEAR_TABLE, MAJOR_MEAN_TABLE)
+    sources = tuple(COMPLETION_SOURCES.values())
+    if any(is_stale(path, sources) for path in paths):
+        for path, rows in zip(paths, build_bachelor_tables()):
+            write_tsv(path, rows)
+    return (
+        tuple(read_tsv(SCHOOL_YEAR_TABLE, SCHOOL_YEAR_COLUMNS)),
+        tuple(read_tsv(MAJOR_MEAN_TABLE, MAJOR_MEAN_COLUMNS)),
+    )
+
+
+def mean_bachelors():
+    """Mean annual domestic bachelor's awards over the years each school reports."""
+    totals, years = defaultdict(int), defaultdict(int)
+    for row in bachelor_tables()[0]:
+        totals[row["unitid"]] += row["awards_domestic"]
+        years[row["unitid"]] += 1
+    return {unitid: total / years[unitid] for unitid, total in totals.items()}
+
+
+def mean_major_bachelors():
+    """Mean annual domestic awards for each institution and CIP code."""
+    return bachelor_tables()[1]
 
 
 def load_population():
@@ -50,16 +199,14 @@ def load_directory():
 
 def load_completions():
     completions = {}
-    for row in zip_rows("C2023_A.zip"):
-        if (row["CIPCODE"].strip() == "99" and number(row["MAJORNUM"]) == 1
-                and number(row["AWLEVEL"]) == 5):
-            unitid = number(row["UNITID"])
+    for row in first_major_awards():
+        if row["cip_code"] == "99" and row["award_level"] == 5:
+            unitid = row["unitid"]
             if unitid in completions:
                 raise ValueError(f"Duplicate bachelor's total for {unitid}")
-            total = number(row["CTOTALT"])
             completions[unitid] = {
-                "bachelors_all": total,
-                "bachelors_domestic": total - number(row["CNRALT"]),
+                "bachelors_all": row["awards_all"],
+                "bachelors_domestic": row["awards_domestic"],
             }
     return completions
 
