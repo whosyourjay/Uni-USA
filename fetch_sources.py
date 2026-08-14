@@ -15,6 +15,18 @@ SOURCES = {
         "https://nces.ed.gov/ipeds/datacenter/data/HD2023.zip",
         "e11d35af6f50fbe2f51d8ddd5a9d4f49860abbab7d73beae1f8524f13ad8945b",
     ),
+    "ADM2014.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2014.zip",
+        "357eb2ad58f03b1085dbfc2a2a8f8ae00785dd3d8b5a40f612f66ced883256dc",
+    ),
+    "ADM2015.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2015.zip",
+        "3d1a9f2c71d9cf4cffa3f00e0c9170daf7a7dc5691523e082a055c02ae34c8de",
+    ),
+    "ADM2016.zip": (
+        "https://nces.ed.gov/ipeds/datacenter/data/ADM2016.zip",
+        "e76aade20b306b7462bce392d4bed11ef2210c05174a6ef9bd40e6be555b7345",
+    ),
     "ADM2019.zip": (
         "https://nces.ed.gov/ipeds/datacenter/data/ADM2019.zip",
         "908034d862377d3214f1e0395cdb34dd041049682c553d1fb391f9eda8196aa5",
@@ -70,10 +82,6 @@ SOURCES = {
     "EFFY2024_Dict.zip": (
         "https://nces.ed.gov/ipeds/datacenter/data/EFFY2024_Dict.zip",
         "bf199f8d452ea53c02f0365489aeb7c99eaf51cf5774d6cb5306467ba8e1f981",
-    ),
-    "C2023_A.zip": (
-        "https://nces.ed.gov/ipeds/datacenter/data/C2023_A.zip",
-        "651d95b6405bb86c6c14884ed54225a27492199d21d8acd63cda2581aa60838a",
     ),
     "C2023_A_Dict.zip": (
         "https://nces.ed.gov/ipeds/datacenter/data/C2023_A_Dict.zip",
@@ -131,6 +139,23 @@ SOURCES = {
         "f4963a49fbb1b34b9e3eb2549ca59c36f69fbf676031edbc2c3fb95512d8223d",
     ),
 }
+COMPLETION_DIGESTS = {
+    2014: "7e04c402ce870a9073e99aafc13eae1ae07d9d97eecf36689d9c42db1996d4c8",
+    2015: "c1d54e7b5896ca3db2a5fadca00c149f76f2d2189e57749e8f4db716a266b489",
+    2016: "7213f0b6521e9e1161acd6be867c4510b0256655c53c42f7f24fb4acdd3d4b4b",
+    2017: "616eabf28a7e94beaf975d35d5f3aa5a446cc26195e5c5dcd1e8de68c0a69df4",
+    2018: "24d100007bc3ff4a20aa43e447e8dac564db7118e81be264d803e694968cc9e3",
+    2019: "ee267e2204f9bc8e356eee2bfe9496d8f764ae95ca9f14b850d4699c3e8df77e",
+    2020: "f36abd6c3bc5b1bbd94bdc864d07fd60db3069522a58cfde4671b4280376ca05",
+    2021: "69317e2afe7ad52f46bbf651f2408b8f5ae2ead5c74206b63554d6f0f1373244",
+    2022: "f81b8390d1758ac710b85a1d5a7af51372770335a02c0d06802a46d3a068126c",
+    2023: "651d95b6405bb86c6c14884ed54225a27492199d21d8acd63cda2581aa60838a",
+}
+SOURCES.update({
+    name: (f"https://nces.ed.gov/ipeds/datacenter/data/{name}", digest)
+    for year, digest in COMPLETION_DIGESTS.items()
+    for name in (f"C{year}_A.zip",)
+})
 
 
 def digest(path):

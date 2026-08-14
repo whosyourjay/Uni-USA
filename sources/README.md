@@ -8,8 +8,7 @@ These are the fixed source tables used by the analysis. The files are downloaded
 | `HD2023.zip` | NCES IPEDS | Fall 2023 institutional directory | <https://nces.ed.gov/ipeds/datacenter/data/HD2023.zip> |
 | `ADM2019.zip` | NCES IPEDS | Fall 2019 first-year admissions, test policy, and submitted-test summaries | <https://nces.ed.gov/ipeds/datacenter/data/ADM2019.zip> |
 | `ADM2019_Dict.zip` | NCES IPEDS | Definitions and code values for 2019 admissions considerations | <https://nces.ed.gov/ipeds/datacenter/data/ADM2019_Dict.zip> |
-| `ADM2020.zip`–`ADM2023.zip` | NCES IPEDS | Later annual SAT/ACT submission counts and score quartiles used to stabilize school ability estimates | <https://nces.ed.gov/ipeds/datacenter/data/ADM2023.zip> |
-| `ADM2017.zip`, `ADM2018.zip` | NCES IPEDS | Earlier redesigned-SAT admissions bars used only for the selective-school stability check | <https://nces.ed.gov/ipeds/datacenter/data/ADM2017.zip> |
+| `ADM2014.zip`–`ADM2018.zip`, `ADM2020.zip`–`ADM2023.zip` | NCES IPEDS | Additional annual SAT/ACT score quartiles averaged into school ability estimates | <https://nces.ed.gov/ipeds/datacenter/data/ADM2014.zip> |
 | `IC2019.zip` | NCES IPEDS | Fall 2019 institutional characteristics, including open-admission status | <https://nces.ed.gov/ipeds/datacenter/data/IC2019.zip> |
 | `IC2019_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/IC2019_Dict.zip> |
 | `EF2019A.zip` | NCES IPEDS | Fall 2019 enrollment by undergraduate entry status | <https://nces.ed.gov/ipeds/datacenter/data/EF2019A.zip> |
@@ -18,6 +17,7 @@ These are the fixed source tables used by the analysis. The files are downloaded
 | `EFFY2024_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/EFFY2024_Dict.zip> |
 | `C2023_A.zip` | NCES IPEDS | 2022–23 completions by institution, award level, field, residency, race, and sex | <https://nces.ed.gov/ipeds/datacenter/data/C2023_A.zip> |
 | `C2023_A_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/C2023_A_Dict.zip> |
+| `C2014_A.zip`–`C2022_A.zip` | NCES IPEDS | Earlier completions years averaged into the school and major award means | <https://nces.ed.gov/ipeds/datacenter/data/C2014_A.zip> |
 | `OM2023.zip` | NCES IPEDS | Eight-year outcomes for the 2015–16 entering cohort, split by first-time status | <https://nces.ed.gov/ipeds/datacenter/data/OM2023.zip> |
 | `OM2023_Dict.zip` | NCES IPEDS | Data dictionary for the preceding file | <https://nces.ed.gov/ipeds/datacenter/data/OM2023_Dict.zip> |
 | `GR2023.zip` | NCES IPEDS | Transfer-out counts for first-time, full-time cohorts at origin institutions | <https://nces.ed.gov/ipeds/datacenter/data/GR2023.zip> |
