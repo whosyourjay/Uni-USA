@@ -18,6 +18,7 @@ example, the six 2019 scores labeled 99+ divide the interval from 99.5 to 100.
 """
 
 from collections import defaultdict
+from functools import lru_cache
 import csv
 from html.parser import HTMLParser
 from pathlib import Path
@@ -25,13 +26,15 @@ import re
 import subprocess
 
 import ability
+import fetch_sources
 import pathways
 
 
 ROOT = Path(__file__).parent
 SAT_PERCENTILES = ROOT / "sources" / "SAT-national-percentiles.html"
 SAT_ANNUAL_PERCENTILES = ROOT / "sources" / "sat-percentile-1600.csv"
-ACT_PROFILE = ROOT / "sources" / "2018-act-national-profile.pdf"
+ACT_PROFILE_YEARS = tuple(sorted(fetch_sources.ACT_PROFILES))
+ACT_PROFILE_DEFAULT_YEAR = 2018
 
 
 def percentile_number(value):
@@ -144,7 +147,23 @@ def load_sat_total_user_percentiles(year=2019, path=SAT_ANNUAL_PERCENTILES):
     return output
 
 
-def act_profile_text(path=ACT_PROFILE):
+def nearest_act_year(year):
+    """Closest pinned ACT profile year, breaking ties toward the earlier one.
+
+    ACT never posted a 2019 profile report, and no report exists before 2018,
+    so admission years outside the pinned set borrow their nearest neighbour.
+    """
+    return min(ACT_PROFILE_YEARS, key=lambda pinned: (abs(pinned - year), pinned))
+
+
+def act_profile_path(year=ACT_PROFILE_DEFAULT_YEAR):
+    """Local PDF holding the graduating-class profile for one ACT year."""
+    if year not in ACT_PROFILE_YEARS:
+        raise ValueError(f"No pinned ACT profile report for {year}")
+    return ROOT / "sources" / f"{year}-act-national-profile.pdf"
+
+
+def act_profile_text(path):
     """Extract layout-preserving text from the official ACT PDF."""
     try:
         result = subprocess.run(
@@ -158,9 +177,10 @@ def act_profile_text(path=ACT_PROFILE):
     return result.stdout
 
 
-def load_act_composite_percentiles(path=ACT_PROFILE):
+@lru_cache(maxsize=None)
+def load_act_composite_percentiles(year=ACT_PROFILE_DEFAULT_YEAR):
     """Return exact score frequencies and CDFs among ACT-tested graduates."""
-    text = act_profile_text(path)
+    text = act_profile_text(act_profile_path(year))
     start = text.index("Table 2.1. ACT Score Distributions")
     end = text.index("Avg (SD)", start)
     counts = {}
@@ -177,8 +197,8 @@ def load_act_composite_percentiles(path=ACT_PROFILE):
     if set(counts) != set(range(1, 37)):
         raise ValueError("Incomplete ACT composite frequency table")
     total = sum(counts.values())
-    if total != 1_914_817:
-        raise ValueError(f"Unexpected ACT profile total: {total:,}")
+    if not 500_000 < total < 3_000_000:
+        raise ValueError(f"Implausible ACT profile total for {year}: {total:,}")
     running = 0
     percentiles = {}
     for score in sorted(counts):

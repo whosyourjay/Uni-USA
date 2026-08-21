@@ -58,7 +58,7 @@ rounds and legacy are overlays, not routes.
 
 ## Outputs
 
-- `schools.tsv` — 2,356 final institutions, ordered by `freshman_score`
+- `schools.tsv` — 2,356 final institutions, ordered by `cohort_median`
 - `majors.tsv` — 85,711 institution-major pairs; major scores currently inherit
   the institution score
 - `derived/final_admission_paths.tsv` — the exhaustive national table above
@@ -66,6 +66,10 @@ rounds and legacy are overlays, not routes.
   at each final institution
 - `derived/transfer_origin_scores.tsv` — origin scores and transfer-out weights
 - `derived/transfer_score.tsv` — pooled transfer score and coverage by origin type
+- `derived/graduate_median_ability.tsv` — each school's graduate-median ability as
+  a percentile of the age-18 cohort
+- `law-schools.tsv` — 2024 ABA entering classes scored from LSAT quartiles
+- `medical-schools.tsv` — MD schools scored from median MCAT and 2023 matriculants
 
 `bachelors` is the mean annual domestic award count over the completions years
 2014–2023, counting only the years an institution reports. Major rows average
@@ -81,17 +85,45 @@ blank for the 899 schools that never report. Students who sent both tests appear
 in each submitter count, so the three percentages need not sum to 100.
 
 `ability_pool_ratio` asks how many students nationally could clear a school's
-published bar for each seat behind it. A q25 bar sits above three quarters of
-that route's submitters, so the seats it competes for are `0.75 * SATNUM` and
-`0.75 * ACTNUM`. The SAT pool is the national test-taker total times the share
-scoring above the school's `SATVR25 + SATMT25`; the ACT pool sums the composite
-frequencies at or above `ACTCM25`. Each year sums both pools and both seat
-counts before dividing, and the column averages that ratio over 2017–2019, the
-years with published national SAT taker totals. The ratio scales with how few
-seats a school has, so small selective colleges sit far above large ones, and a
-school reporting a handful of submitters can reach six figures.
+published bar for each seat at that bar or above. A q25 bar sits above three
+quarters of that route's submitters, so the seats it competes for are
+`0.75 * SATNUM` and `0.75 * ACTNUM`. The SAT pool is the national test-taker
+total times the share scoring above the school's `SATVR25 + SATMT25`; the ACT
+pool sums the composite frequencies at or above `ACTCM25`. Each year sums both
+pools and both seat counts before dividing, and the column averages that ratio
+over 2017–2019, the years with published national SAT taker totals.
+
+The denominator counts every seat behind a bar at least as high, running each
+route down its own bar order, so a student who clears a school's bar is measured
+against everywhere else they could have gone. Schools sharing a bar share a
+total, which matters because the ACT composite is a coarse integer: 178 schools
+posted a 19 in 2019. Dividing by a school's own seats instead made the ratio
+scale with how few seats it has, which put Harvey Mudd at 464 against
+Princeton's 141; against seats at that bar or above they read 29 and 8. Caltech
+holds the highest SAT and ACT bar of the 1,280 schools with one, so nothing
+sits above it and its ratio is unchanged.
 
 Downloaded sources and generated tables stay local and out of Git.
+
+Run `python3 outputs.py --schools-only` to regenerate `schools.tsv`, then
+`python3 professional_outputs.py` to regenerate both professional-school files.
+
+## Professional schools
+
+Law converts each school's LSAT q25, median, and q75 to exact LSAT-taker
+percentiles, maps each rank onto the bachelor-weighted distribution of
+undergraduate school ability, and averages the three results. This is a
+provisional bridge: ABA supplies the destination counts and LSAT bars, but no
+recent public origin-by-undergraduate-school table. `lsat_share` shows how much
+of the entering class supplied an LSAT; GRE and JD-Next entrants remain unscored.
+
+Medicine maps the median MCAT rank onto the AAMC applicant-origin distribution.
+AAMC's table covers the 39,763 applicants from institutions supplying at least
+50 applicants, or 75.6% of all 52,577 applicants. We match an undergraduate
+score to 94.6% of that published mass. Whole-number MCAT percentile ties are
+spread evenly within their rounding intervals. The school MCAT table is a
+secondary transcription of MSAR because AAMC does not publish a free bulk
+school-level score table.
 
 ## Coverage
 
@@ -133,11 +165,54 @@ ACT remain separate routes throughout the final mixture.
 
 `schools.tsv` records one SAT center averaged across available fall 2016–2023
 observations and one ACT center averaged across fall 2014–2023. Its
-`freshman_score` gives the available SAT and ACT route means equal weight. SAT
-uses the matching annual test-taker distribution; ACT provisionally uses the
-same 2018 test-taker distribution for every year. Schools are ordered by
-`freshman_score` until the transfer adjustment is reliable enough to use
-`ability` as the default.
+`freshman_score` gives the available SAT and ACT route means equal weight. Both
+tests use the annual national taker distribution nearest the admission year; ACT
+published a graduating-class profile for 2018 and 2020–2025 but never for 2019.
+Schools are ordered by `cohort_median`, the age-18 percentile below; the 1,369
+schools without one hold their old `freshman_score` order beneath the ranked
+head.
+
+## Graduate median on the cohort scale
+
+`intake_ability.py` places schools on the age-18 population rather than on test
+takers. The SAT and ACT together are taken to cover the top of the cohort, so
+their reach is `SAT + ACT - dual takers` over the 4,357,485-person age-18
+population: 69.5% in 2017, 75.8% in 2018 and 77.1% in 2019, as school-day SAT
+testing pulled in students who would not otherwise have sat either test. A score
+beating share `s` of its own test's takers lands at cohort percentile
+`100 * (1 - s * reach)`.
+
+Only one year's dual-taker count exists: College Board and ACT matched about
+600,000 of them in the 2017 graduating class for their concordance study. Later
+years scale that count by the product of the two taker pools, which holds the
+2017 association between sitting one test and sitting the other. Everything else
+in this section is computed separately for each admission year and averaged only
+at the end.
+
+The reach puts all four published bars — SAT and ACT quartiles — on one axis.
+Each route's submitters are given a normal pinned to its two bars, so ability
+interpolates between quartiles in standard deviations rather than in percentile
+points. IPEDS counts a dual submitter under both tests, but dual submitters clear
+a bar at the same rate as the whole submitting group, so the overlap cancels from
+the submitter-weighted share and only the distinct head count survives. That head
+count is `min(SATNUM + ACTNUM, ENRLT)`; students who sent neither test are placed
+below every bar.
+
+The curve counts entrants while the median counts graduates, which the transfer
+model bridges. Transfers in enter as the school's weakest students, so the median
+graduate is a freshman unless transfers take more than half the degrees. Leaving
+is independent of ability, so the freshmen who stay keep the entering class's
+distribution and the median graduate's quantile among direct graduates is its
+quantile among entrants. The median is therefore read at
+`entrants * (bachelors / 2) / direct graduates`, using the same transfer counts
+as `derived/institution_final_routes.tsv`.
+
+Of 1,368 schools, 1,044 get a median. Transfers take more than half the degrees
+at 280, and at 44 the median graduate sent no score; both are left blank. Another
+231 have a median that falls outside every published quartile, where the answer
+rests on an assumed tail. Setting `QUARTILE_MODEL = "uniform"` spreads each
+quartile evenly across percentile points instead, which reads about one
+percentile lower at the median school and much lower outside the bars.
 
 Across institutions with complete score bars, the SAT mixture contains 846,098
 submitters and has center 72.09; the ACT mixture contains 673,599 and has center
@@ -196,6 +271,7 @@ python3 special_routes.py
 python3 origins.py
 python3 transfer.py
 python3 final_routes.py
+python3 intake_ability.py
 python3 outputs.py
 ```
 

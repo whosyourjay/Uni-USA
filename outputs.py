@@ -7,9 +7,9 @@ from collections import Counter
 from html.parser import HTMLParser
 
 import ability
-import class_rank
 import final_routes
 import pathways
+import rank_ability
 import sat_seat_ratio
 import scores
 import transfer
@@ -20,13 +20,14 @@ CIP_BROWSE = pathways.SOURCES / "CIP2020-browse.html"
 TEST_PERCENTILE_COLUMNS = ("sat_taker_percentile", "act_taker_percentile")
 SCHOOL_COLUMNS = (
     "school",
+    "cohort_median",
     "ability",
     "bachelors",
     "freshman_score",
     *scores.TEST_SHARE_COLUMNS,
     *TEST_PERCENTILE_COLUMNS,
     "ability_pool_ratio",
-    "class_rank_percentile_2019",
+    *rank_ability.RANK_COLUMNS,
     "transfer_share",
 )
 MAJOR_COLUMNS = ("school", "major") + SCHOOL_COLUMNS[1:]
@@ -100,6 +101,26 @@ def scored_components(route, paths, transfer_score):
     return freshman, freshman + [(transfer_score, paths["Transfer"])]
 
 
+def assign_ranks(rows, tiebreak):
+    """Sort by the cohort median and number every row carrying a score.
+
+    Schools without a measured median keep their place on the older test-taker
+    proxy, below every school the cohort scale reaches.
+    """
+    rows.sort(key=lambda row: (
+        row["cohort_median"] == "", -(row["cohort_median"] or 0),
+        row["freshman_score"] == "", -(row["freshman_score"] or 0),
+        -row["bachelors"],
+    ) + tiebreak(row))
+    scored = (
+        row for row in rows
+        if row["cohort_median"] != "" or row["freshman_score"] != ""
+    )
+    for rank, row in enumerate(scored, 1):
+        row["rank"] = rank
+    return rows
+
+
 def school_rows(graduates, routes, transfer_score, institution_routes):
     paths_by_id = {}
     for row in institution_routes:
@@ -109,6 +130,9 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
     test_shares = scores.test_share_means()
     blank_shares = {column: "" for column in scores.TEST_SHARE_COLUMNS}
     pool_ratios = sat_seat_ratio.pool_ratio_means(set(paths_by_id))
+    cohort_medians = rank_ability.cohort_percentiles()
+    rank_summaries, _ = rank_ability.rank_percentiles()
+    blank_rank = {column: "" for column in rank_ability.RANK_COLUMNS}
     mean_bachelors = pathways.mean_bachelors()
     rows = []
     for graduate in graduates:
@@ -132,13 +156,14 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
             status = "rough: scored freshman routes plus pooled transfer score"
         rows.append({
             "rank": "",
+            "cohort_median": cohort_medians.get(graduate["unitid"], ""),
             "ability": round(rough_ability, 3) if rough_ability != "" else "",
             "ability_coverage": round(coverage, 6) if coverage else "",
             **route,
             "freshman_score": round(freshman_score, 2) if freshman_score != "" else "",
             **test_shares.get(graduate["unitid"], blank_shares),
             "ability_pool_ratio": pool_ratios.get(graduate["unitid"], ""),
-            "class_rank_percentile_2019": "",
+            **rank_summaries.get(graduate["unitid"], blank_rank),
             "transfer_score": transfer_score if share != "" and share > 0 else "",
             "school_id": graduate["unitid"],
             "school": graduate["institution"],
@@ -172,16 +197,7 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
             ),
             "ability_status": status,
         })
-    rows.sort(key=lambda row: (
-        row["freshman_score"] == "", -(row["freshman_score"] or 0),
-        -row["bachelors"],
-        row["school_id"],
-    ))
-    for rank, row in enumerate(
-        (row for row in rows if row["freshman_score"] != ""), 1
-    ):
-        row["rank"] = rank
-    return rows
+    return assign_ranks(rows, lambda row: (row["school_id"],))
 
 
 def titled_major_means(titles, wanted):
@@ -216,6 +232,7 @@ def major_rows(schools, titles):
             direct, transfer = current_split(bachelors, school["transfer_share"])
             rows.append({
                 "rank": "",
+                "cohort_median": school["cohort_median"],
                 "ability": school["ability"],
                 "ability_coverage": school["ability_coverage"],
                 "freshman_score": school["freshman_score"],
@@ -232,22 +249,11 @@ def major_rows(schools, titles):
                 "estimated_transfer_bachelors": transfer,
                 "transfer_share": school["transfer_share"],
                 **{column: school[column] for column in TEST_PERCENTILE_COLUMNS},
-                "class_rank_percentile_2019": school[
-                    "class_rank_percentile_2019"
-                ],
+                **{column: school[column] for column in rank_ability.RANK_COLUMNS},
                 "freshman_score_basis": school["freshman_score_basis"],
                 "ability_status": school["ability_status"] + "; school-level",
             })
-    rows.sort(key=lambda row: (
-        row["freshman_score"] == "", -(row["freshman_score"] or 0),
-        -row["bachelors"],
-        row["school_id"], row["cip_code"],
-    ))
-    for rank, row in enumerate(
-        (row for row in rows if row["freshman_score"] != ""), 1
-    ):
-        row["rank"] = rank
-    return rows
+    return assign_ranks(rows, lambda row: (row["school_id"], row["cip_code"]))
 
 
 def build_tables():
@@ -276,14 +282,6 @@ def build_tables():
         transfer_score,
         institution_routes,
     )
-    rank_scores = class_rank.score_lookup(
-        graduates, class_rank.top_sample_rows(detailed_schools), admissions
-    )
-    for row in detailed_schools:
-        if row["school_id"] in rank_scores:
-            row["class_rank_percentile_2019"] = round(
-                rank_scores[row["school_id"]]["class_rank_mean"], 2
-            )
     detailed_majors = major_rows(detailed_schools, load_cip_titles())
     major_counts = Counter()
     for row in detailed_majors:

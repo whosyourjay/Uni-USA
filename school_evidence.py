@@ -10,7 +10,7 @@ import sys
 import ability
 import cds_c10
 import cds_documents
-import class_rank
+import entering_class
 import pathways
 import rank_ability
 import scores
@@ -98,7 +98,7 @@ def main():
     if varying:
         print_table("Changed over time", considerations, ("year", *varying))
 
-    print_cds_history(name)
+    print_rank_history(unitid, name)
 
 
 def cds_history(school):
@@ -115,27 +115,40 @@ def cds_history(school):
     return rows
 
 
-def print_cds_history(school):
-    print("\nCommon Data Set class rank")
-    rows = cds_history(school)
+def rank_history(unitid, school):
+    """Class-rank observations: every entering class, then any fetched CDS."""
+    rows = [
+        {"year": f"fall {row['entering_year']}", "rank_reporting_pct": "", **row}
+        for row in entering_class.school_history(unitid)
+    ]
+    for row in cds_history(school):
+        if row["top_10_pct"]:
+            rows.append({"year": row["cds_year"], **row})
+    return rows
+
+
+def modeled_percentile(top_10, fit):
+    """Cohort percentile the fitted scale reads out of a top-decile share."""
+    if not rank_ability.usable_share({"top_10_pct": top_10 or ""}):
+        return float("nan")
+    return rank_ability.implied_percentile(top_10, fit)
+
+
+def print_rank_history(unitid, school):
+    print("\nClass rank")
+    rows = rank_history(unitid, school)
     if not rows:
-        print("  no fetched CDS documents")
+        print("  no entering-class listing and no fetched CDS documents")
         return
-    spread = rank_ability.fit_class_spread(rank_ability.fitting_rows(
-        pathways.read_tsv(class_rank.RANK_TABLE, class_rank.RANK_TABLE_COLUMNS),
-        rank_ability.load_school_percentiles(),
-    ))
+    _, fit = rank_ability.rank_percentiles()
     print(f"  {'year':<9} {'top10':>6} {'top25':>6} {'rank%':>6} "
           f"{'uniform':>8} {'modeled':>8}")
+    shares = ("top_10_pct", "top_25_pct", "rank_reporting_pct")
     for row in rows:
-        implied = rank_ability.national_ability(
-            row["top_10_pct"] / 100, spread["class_sd"]
-        )
-        modeled = 100 * rank_ability.NORMAL.cdf(implied) if implied else float("nan")
-        uniform = row["class_rank_mean"] or float("nan")
-        print(f"  {row['cds_year']:<9} {row['top_10_pct']:>6} {row['top_25_pct']:>6} "
-              f"{str(row['rank_reporting_pct'] or '--'):>6} "
-              f"{uniform:>8.2f} {modeled:>8.2f}")
+        cells = " ".join(f"{str(row[key] or '--'):>6}" for key in shares)
+        print(f"  {row['year']:<9} {cells} "
+              f"{row['class_rank_mean'] or float('nan'):>8.2f} "
+              f"{modeled_percentile(row['top_10_pct'], fit):>8.2f}")
 
 
 if __name__ == "__main__":

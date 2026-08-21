@@ -3,6 +3,9 @@ __pycache__/
 derived/
 schools.tsv
 majors.tsv
+law-schools.tsv
+medical-schools.tsv
 test_evidence.html
 sources/*
 !sources/README.md
+CLAUDE.md

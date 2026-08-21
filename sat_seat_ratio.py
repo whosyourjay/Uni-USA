@@ -10,6 +10,7 @@ averaged over the years a school reports.
 
 from collections import defaultdict
 from functools import lru_cache
+from itertools import groupby
 from pathlib import Path
 from statistics import fmean
 import re
@@ -52,9 +53,11 @@ def national_sat_takers(year):
 
 
 @lru_cache(maxsize=None)
-def national_act_counts():
-    """Composite frequencies for the 2018 tested class, used for every year."""
-    counts, _ = calibrate_tests.load_act_composite_percentiles()
+def national_act_counts(year):
+    """Composite frequencies for the tested class nearest to `year`."""
+    counts, _ = calibrate_tests.load_act_composite_percentiles(
+        calibrate_tests.nearest_act_year(year)
+    )
     return counts
 
 
@@ -93,42 +96,85 @@ def pool_ratio(pools):
     return sum(route["pool"] for route in pools.values()) / seats
 
 
+def year_pools(year):
+    """Every school's route pools for one year, keyed by institution."""
+    act_counts = national_act_counts(year)
+    sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
+    sat_takers = national_sat_takers(year)
+    pools = {}
+    for unitid, admission in ability.load_admissions(year).items():
+        school = route_pools(admission, sat_table, sat_takers, act_counts)
+        if school:
+            pools[unitid] = school
+    return pools
+
+
+def claimed_seats(pools):
+    """Seats behind every bar at or above each school's own, one route at a time.
+
+    Schools sharing a bar share a total, so the coarse integer ACT composite
+    does not order identical schools at random."""
+    entries = defaultdict(list)
+    for unitid, school in pools.items():
+        for route, values in school.items():
+            entries[route].append((values["bar"], unitid, values["seats"]))
+    claimed = defaultdict(dict)
+    for route, route_entries in entries.items():
+        running = 0.0
+        route_entries.sort(key=lambda entry: -entry[0])
+        for _, tied in groupby(route_entries, key=lambda entry: entry[0]):
+            tied = list(tied)
+            running += sum(seats for _, _, seats in tied)
+            for _, unitid, _ in tied:
+                claimed[route][unitid] = running
+    return claimed
+
+
+def cumulative_pool_ratio(school, claimed, unitid):
+    """Pool clearing a school's bar per seat at that bar or above."""
+    seats = sum(claimed[route][unitid] for route in school)
+    if not seats:
+        return None
+    return sum(values["pool"] for values in school.values()) / seats
+
+
 def pool_ratio_means(unitids, years=YEARS):
-    """Mean pool-to-class ratio by institution over the reporting years."""
-    act_counts = national_act_counts()
+    """Mean pool-to-seat ratio by institution over the reporting years."""
     ratios = defaultdict(list)
     for year in years:
-        sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
-        sat_takers = national_sat_takers(year)
-        for unitid, admission in ability.load_admissions(year).items():
-            if unitid not in unitids:
+        pools = year_pools(year)
+        claimed = claimed_seats(pools)
+        for unitid in unitids:
+            school = pools.get(unitid)
+            if not school:
                 continue
-            ratio = pool_ratio(
-                route_pools(admission, sat_table, sat_takers, act_counts)
-            )
+            ratio = cumulative_pool_ratio(school, claimed, unitid)
             if ratio is not None:
                 ratios[unitid].append(ratio)
     return {unitid: round(fmean(values), 2) for unitid, values in ratios.items()}
 
 
 def annual_rows():
-    act_counts = national_act_counts()
     output = []
     for year in YEARS:
-        sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
+        pools = year_pools(year)
+        claimed = claimed_seats(pools)
         sat_takers = national_sat_takers(year)
-        admissions = ability.load_admissions(year)
         for unitid, school in SCHOOLS.items():
-            pools = route_pools(
-                admissions[unitid], sat_table, sat_takers, act_counts
-            )
+            school_pools = pools[unitid]
             row = {"school": school, "year": year, "sat_test_takers": sat_takers}
             for route in ("sat", "act"):
-                values = pools.get(route, {})
+                values = school_pools.get(route, {})
                 row[f"{route}_q25_bar"] = values.get("bar", "")
                 row[f"{route}_pool"] = round(values["pool"]) if values else ""
                 row[f"{route}_seats"] = round(values["seats"], 2) if values else ""
-            row["pool_per_seat"] = round(pool_ratio(pools), 2)
+                row[f"{route}_seats_at_or_above"] = (
+                    round(claimed[route][unitid]) if values else ""
+                )
+            row["pool_per_seat"] = round(pool_ratio(school_pools), 2)
+            row["pool_per_seat_at_or_above"] = round(
+                cumulative_pool_ratio(school_pools, claimed, unitid), 2
+            )
             output.append(row)
     return output
 
@@ -153,7 +199,10 @@ def main():
         ROOT / "derived" / "top_q25_pool_ratios.tsv", rows + averages
     )
     for row in averages:
-        print(f"{row['school']}: {row['pool_per_seat']:.2f} per seat")
+        print(
+            f"{row['school']}: {row['pool_per_seat']:.2f} per own seat, "
+            f"{row['pool_per_seat_at_or_above']:.2f} per seat at that bar or above"
+        )
 
 
 if __name__ == "__main__":

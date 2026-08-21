@@ -8,9 +8,6 @@ derived table.  Downloading and parsing live in `cds_documents` and `cds_c10`.
 
 import argparse
 import csv
-from difflib import SequenceMatcher
-import re
-
 import ability
 import cds_c10
 import cds_documents
@@ -25,14 +22,9 @@ RANK_TABLE_COLUMNS = {
 }
 
 
-def normalize_school(name):
-    name = name.lower().replace("&", " and ")
-    return " ".join(re.sub(r"[^a-z0-9]+", " ", name).split())
-
-
 def document_identity_matches(school, text):
     """Reject repository links that point to a different institution."""
-    return normalize_school(school) in normalize_school(text[:6000])
+    return pathways.normalize_school(school) in pathways.normalize_school(text[:6000])
 
 
 def top_sample_rows(rows, count=10):
@@ -59,48 +51,16 @@ def top_sample_from_tsv(path=SCHOOL_TABLE):
 
 
 def target_repository_rows(repository, targets):
-    by_name = {normalize_school(row["repository_school"]): row for row in repository}
+    by_name = {pathways.normalize_school(row["repository_school"]): row for row in repository}
     return [
-        by_name[normalize_school(target["school"])]
+        by_name[pathways.normalize_school(target["school"])]
         for target in targets
-        if normalize_school(target["school"]) in by_name
+        if pathways.normalize_school(target["school"]) in by_name
     ]
 
 
 def match_school(name, graduates):
-    normalized = normalize_school(name)
-    exact = [
-        row for row in graduates
-        if normalize_school(row["institution"]) == normalized
-    ]
-    if len(exact) == 1:
-        return exact[0]
-    prefixed = [
-        row for row in graduates
-        if normalize_school(row["institution"]).startswith(normalized + " ")
-    ]
-    on_campus = [
-        row for row in prefixed
-        if not {"digital", "online"} & set(normalize_school(row["institution"]).split())
-    ]
-    if len(on_campus) == 1:
-        return on_campus[0]
-    candidates = sorted(
-        (
-            (
-                SequenceMatcher(
-                    None, normalized, normalize_school(row["institution"])
-                ).ratio(),
-                row,
-            )
-            for row in graduates
-        ),
-        key=lambda pair: pair[0],
-        reverse=True,
-    )
-    if candidates[0][0] >= 0.94 and candidates[0][0] - candidates[1][0] >= 0.03:
-        return candidates[0][1]
-    return None
+    return pathways.match_name(name, ((row["institution"], row) for row in graduates))
 
 
 def source_c10(source):
@@ -142,8 +102,8 @@ def read_rank_table(path=RANK_TABLE):
 
 def table_covers(rows, targets):
     """Whether the derived table already reports every target school."""
-    scored = {normalize_school(row["school"]) for row in rows}
-    return all(normalize_school(target["school"]) in scored for target in targets)
+    scored = {pathways.normalize_school(row["school"]) for row in rows}
+    return all(pathways.normalize_school(target["school"]) in scored for target in targets)
 
 
 def build_rank_table(targets, graduates=None, admissions=None, repository=None,
@@ -158,9 +118,9 @@ def build_rank_table(targets, graduates=None, admissions=None, repository=None,
             cds_documents.repository_rows(year=year), targets
         )
     rows = scored_rows(repository, graduates, admissions)
-    indexed = {normalize_school(row["repository_school"]) for row in repository}
+    indexed = {pathways.normalize_school(row["repository_school"]) for row in repository}
     for target in targets:
-        if normalize_school(target["school"]) not in indexed:
+        if pathways.normalize_school(target["school"]) not in indexed:
             rows.append({
                 "unitid": "",
                 "school": target["school"],

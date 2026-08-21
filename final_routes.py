@@ -2,6 +2,7 @@
 """Build one exhaustive credential and bachelor's-admission pathway table."""
 
 from collections import defaultdict
+from functools import lru_cache
 
 import ability
 import pathways
@@ -70,13 +71,17 @@ def transfer_target(population, graduates):
     return next(row["people"] for row in rows if row["path"].startswith("Bachelor's, prior"))
 
 
-def institution_route_rows(graduates, admissions, characteristics, population):
-    """Estimate a route mixture for every final bachelor's institution."""
+def transfer_graduate_counts(graduates, population):
+    """Transfer-origin degrees at each institution, scaled to the national total.
+
+    Outcome Measures gives each institution a transfer-graduate share; schools
+    without one take the national share.  The estimates are then scaled together
+    so they sum to the pathway table's transfer bachelor flow.
+    """
     outcome_direct = sum(row["direct_bachelors_8yr"] for row in graduates)
     outcome_transfer = sum(row["transfer_bachelors_8yr"] for row in graduates)
     fallback_share = outcome_transfer / (outcome_direct + outcome_transfer)
-    target = transfer_target(population, graduates)
-    raw_transfer = {
+    raw = {
         row["unitid"]: row["bachelors_domestic"] * (
             row["transfer_share_bachelors_8yr"]
             if row["transfer_share_bachelors_8yr"] != ""
@@ -84,13 +89,31 @@ def institution_route_rows(graduates, admissions, characteristics, population):
         )
         for row in graduates
     }
-    scale = target / sum(raw_transfer.values())
+    scale = transfer_target(population, graduates) / sum(raw.values())
+    return {unitid: count * scale for unitid, count in raw.items()}
+
+
+@lru_cache(maxsize=None)
+def transfer_graduates():
+    """Cached `transfer_graduate_counts` that loads its own inputs."""
+    graduates = pathways.graduate_rows(
+        pathways.load_directory(),
+        pathways.load_completions(),
+        pathways.load_outcomes(),
+        pathways.load_enrollment(),
+    )
+    return transfer_graduate_counts(graduates, pathways.load_population())
+
+
+def institution_route_rows(graduates, admissions, characteristics, population):
+    """Estimate a route mixture for every final bachelor's institution."""
+    raw_transfer = transfer_graduate_counts(graduates, population)
     portfolio_counts = portfolio_bachelor_counts()
 
     output = []
     for graduate in graduates:
         unitid = graduate["unitid"]
-        transfer_count = raw_transfer[unitid] * scale
+        transfer_count = raw_transfer[unitid]
         freshman_count = graduate["bachelors_domestic"] - transfer_count
         route_shares = freshman_route_shares(
             unitid,

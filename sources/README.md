@@ -28,6 +28,12 @@ These are the fixed source tables used by the analysis. The files are downloaded
 | `2018-act-national-profile.pdf` | ACT | Exact ACT composite score frequencies for the 2018 tested graduating class, Table 2.1 | <https://www.act.org/content/dam/act/unsecured/documents/cccr2018/P_99_999999_N_S_N00_ACT-GCPR_National.pdf> |
 | `CIP2020-browse.html` | NCES IPEDS | Complete 2020 Classification of Instructional Programs code and title list | <https://nces.ed.gov/ipeds/cipcode/browse.aspx?y=56> |
 | `common-data-set-repository.html`, `cds-2019/` | Institution-published Common Data Sets, indexed by College Transitions | Standardized 2019–20 C10 freshman class-rank distributions | <https://www.collegetransitions.com/dataverse/common-data-set-repository/> |
+| `aba-law-2024.xlsx` | American Bar Association | 2024 first-year class counts, test counts, and LSAT/GRE/JD-Next quartiles | <https://www.abarequireddisclosures.org/Disclosure509.aspx> |
+| `lsat-percentiles-2021-2024.pdf` | Law School Admission Council | Exact LSAT percent-below ranks | <https://www.lsac.org/data-research/data/lsat-percentiles> |
+| `mcat-percentiles-2024.txt` | Association of American Medical Colleges, mirrored by Harvard | Extracted 2024 MCAT total-score percentile table | <https://adamshouse.harvard.edu/resource/2024mcatpercentilespdf> |
+| `aamc-medical-feeders-2023.txt` | Association of American Medical Colleges | Table A-2 undergraduate institutions supplying at least 50 MD applicants, 2023–24 | <https://www.aamc.org/media/35691/download?attachment=> |
+| `aamc-medical-matriculants-2023.txt` | Association of American Medical Colleges | Table A-1 MD matriculants by medical school, 2023–24 | <https://www.aamc.org/media/35686/download?attachment=> |
+| `medical-school-mcat.html` | Inspira Advantage, transcribed from AAMC MSAR | School-level median MCAT scores | <https://www.inspiraadvantage.com/blog/gpa-and-mcat-scores-for-all-medical-schools> |
 
 Run `python3 fetch_sources.py` to verify or restore the local copies. The downloader pins the SHA-256 digest of every input. `calibrate_tests.py` uses `pdftotext -layout` to parse the ACT table.
 Run `python3 class_rank.py --fetch` separately to collect and parse the fixed 20-school class-rank sample.

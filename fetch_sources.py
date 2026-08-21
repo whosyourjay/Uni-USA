@@ -2,8 +2,9 @@
 """Download the small, fixed source bundle used by the USA pathway analysis."""
 
 import hashlib
+import sys
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 SOURCES = {
     "nc-est2023-agesex-res.csv": (
@@ -129,11 +130,6 @@ SOURCES = {
         "2019-total-group-sat-suite-assessments-annual-report.pdf",
         "55a088435042d9eb22dc0246b02624ae8e8218b82d84608ffe429887f3b0f1de",
     ),
-    "2018-act-national-profile.pdf": (
-        "https://www.act.org/content/dam/act/unsecured/documents/cccr2018/"
-        "P_99_999999_N_S_N00_ACT-GCPR_National.pdf",
-        "a8e819602d03be5897358456644aefbffd22207a138c67f8f0560573fa9fb3f2",
-    ),
     "CIP2020-browse.html": (
         "https://nces.ed.gov/ipeds/cipcode/browse.aspx?y=56",
         "f4963a49fbb1b34b9e3eb2549ca59c36f69fbf676031edbc2c3fb95512d8223d",
@@ -156,6 +152,71 @@ SOURCES.update({
     for year, digest in COMPLETION_DIGESTS.items()
     for name in (f"C{year}_A.zip",)
 })
+ACT_PROFILE_BASE = "https://www.act.org/content/dam/act/unsecured/documents"
+ACT_PROFILES = {
+    2018: (
+        "cccr2018/P_99_999999_N_S_N00_ACT-GCPR_National.pdf",
+        "a8e819602d03be5897358456644aefbffd22207a138c67f8f0560573fa9fb3f2",
+    ),
+    2020: (
+        "2020/2020-National-ACT-Profile-Report.pdf",
+        "2039dfafd0c079727e3c4fecb4aba8225d4b5e528f4708286ac6c675473de5a7",
+    ),
+    2021: (
+        "2021/2021-National-ACT-Profile-Report.pdf",
+        "f3df2695794f89a87a1addc7204e38a2e3d2cb6c65937dcaafbb924057f17417",
+    ),
+    2022: (
+        "2022/2022-National-ACT-Profile-Report.pdf",
+        "de569ad76539304f902db550f61c1c0efcfb18773f888d1687018896769eef0b",
+    ),
+    2023: (
+        "2023-National-ACT-Profile-Report.pdf",
+        "6d0a8da18138ec90ada3f0825006c68461d75aa2e47d4008945ec15f232f2f83",
+    ),
+    2024: (
+        "2024-act-national-graduating-class-profile-report.pdf",
+        "de76b9bf020c402bda289fd82e8c9d9dcd108c723b4abff1712d822c95970b10",
+    ),
+    2025: (
+        "2025-act-profile-report-us.pdf",
+        "13e97e58d1419128552708c1132e10e0d9bdf84d0667b5afda7d2888350ec529",
+    ),
+}
+SOURCES.update({
+    f"{year}-act-national-profile.pdf": (f"{ACT_PROFILE_BASE}/{path}", digest)
+    for year, (path, digest) in ACT_PROFILES.items()
+})
+SOURCES.update({
+    "aba-law-2024.xlsx": (
+        "https://backend.abarequireddisclosures.org/api/AnnualQuestionnaire/"
+        "GetAllCompilationData?year=2024&scetionName=First%20Year%20Class",
+        "5e892ab6d09e586c540a4382aeefb8c87c0d520d9ec6525e2c3826d04c5febdd",
+    ),
+    "lsat-percentiles-2021-2024.pdf": (
+        "https://www.lsac.org/sites/default/files/media/"
+        "lsat-percentiles_2021_2024_accessible.pdf",
+        "8b9be3a1ddaef043c7ec4912182f66f0a6ceb29e83c73b43424add83d02a384c",
+    ),
+    "mcat-percentiles-2024.txt": (
+        "https://r.jina.ai/http://adamshouse.harvard.edu/resource/"
+        "2024mcatpercentilespdf",
+        "0ce3adbdfca278b7e6b35fded11ae5292f1e16cb2c3ed039fc59a2e2c6b83196",
+    ),
+    "aamc-medical-feeders-2023.txt": (
+        "https://r.jina.ai/http://www.aamc.org/media/35691/download?attachment=",
+        "19b8c1f7f79014ffc903062faf2fbfd3d636ea9f8b315c243476a64ef074446a",
+    ),
+    "aamc-medical-matriculants-2023.txt": (
+        "https://r.jina.ai/http://www.aamc.org/media/35686/download?attachment=",
+        "9b01c392f0b00b1e7b6f54d36fbe79cee5b8bbf3c9ffb1ffce1cf173e5c6b810",
+    ),
+    "medical-school-mcat.html": (
+        "https://www.inspiraadvantage.com/blog/"
+        "gpa-and-mcat-scores-for-all-medical-schools",
+        "bfccb1f1f1f3d3049baa34a1a9c895893f4faa27b915db6793add4de27bc8162",
+    ),
+})
 
 
 def digest(path):
@@ -167,17 +228,19 @@ def digest(path):
 
 
 def download(name, url, expected, directory):
+    """Fetch one pinned source; `expected` of None accepts whatever arrives."""
     target = directory / name
     if target.exists() and digest(target) == expected:
         print(f"ok       {name}")
         return
     partial = target.with_suffix(target.suffix + ".part")
     print(f"download {name}")
-    with urlopen(url) as response, partial.open("wb") as output:
+    request = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urlopen(request, timeout=30) as response, partial.open("wb") as output:
         for block in iter(lambda: response.read(1024 * 1024), b""):
             output.write(block)
     actual = digest(partial)
-    if actual != expected:
+    if expected is not None and actual != expected:
         raise ValueError(f"SHA-256 mismatch for {name}: {actual}")
     partial.replace(target)
 
@@ -185,6 +248,11 @@ def download(name, url, expected, directory):
 def main():
     directory = Path(__file__).parent / "sources"
     directory.mkdir(exist_ok=True)
+    if sys.argv[1:2] == ["--add"]:
+        for name, url in zip(sys.argv[2::2], sys.argv[3::2]):
+            download(name, url, None, directory)
+            print(f"{name}: {digest(directory / name)}")
+        return
     for name, (url, expected) in SOURCES.items():
         download(name, url, expected, directory)
 

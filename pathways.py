@@ -3,8 +3,10 @@
 
 import csv
 import io
+import re
 import zipfile
 from collections import defaultdict
+from difflib import SequenceMatcher
 from functools import lru_cache
 from pathlib import Path
 
@@ -33,11 +35,64 @@ OM_COHORTS = {10: "direct_full_time", 20: "direct_part_time",
               30: "transfer_full_time", 40: "transfer_part_time"}
 LEVEL_NAMES = {1: "four-or-more-year", 2: "two-to-four-year", 3: "under-two-year"}
 CONTROL_NAMES = {1: "public", 2: "private nonprofit", 3: "private for-profit"}
+NAME_ALIASES = {"st": "saint", "univ": "university"}
+EDGE_WORDS = {"the", "suny", "cuny"}
+EXCLUDED_WORDS = {"digital", "online"}
+MAIN_CAMPUS = "main campus"
 
 
 def number(value):
     value = (value or "").strip()
     return int(value) if value not in {"", "."} else 0
+
+
+def normalize_school(name):
+    """Institution name reduced to the words that identify it.
+
+    Sources spell the same institution with `St.` or `Saint`, with a leading or
+    trailing `The`, and with or without a `(SUNY)` style system tag.
+    """
+    name = name.lower().replace("&", " and ")
+    words = [
+        NAME_ALIASES.get(word, word)
+        for word in re.sub(r"[^a-z0-9]+", " ", name).split()
+    ]
+    while words and words[0] in EDGE_WORDS:
+        words.pop(0)
+    while words and words[-1] in EDGE_WORDS:
+        words.pop()
+    return " ".join(words)
+
+
+def match_name(name, candidates):
+    """The one `(name, value)` candidate an institution name picks out.
+
+    An exactly matching name wins, then a single longer name that extends it,
+    then a near match that clearly beats its runner-up.  Anything ambiguous
+    returns None rather than guessing between two institutions.
+    """
+    normalized = normalize_school(name)
+    pairs = [(normalize_school(label), value) for label, value in candidates]
+    exact = [value for label, value in pairs if label == normalized]
+    if len(exact) == 1:
+        return exact[0]
+    extended = [
+        (label, value) for label, value in pairs
+        if label.startswith(normalized + " ") and not EXCLUDED_WORDS & set(label.split())
+    ]
+    flagship = [value for label, value in extended if label.endswith(MAIN_CAMPUS)]
+    if len(extended) == 1 or len(flagship) == 1:
+        return flagship[0] if flagship else extended[0][1]
+    scored = sorted(
+        (
+            (SequenceMatcher(None, normalized, label).ratio(), index)
+            for index, (label, _) in enumerate(pairs)
+        ),
+        reverse=True,
+    )
+    if scored[0][0] >= 0.94 and scored[0][0] - scored[1][0] >= 0.03:
+        return pairs[scored[0][1]][1]
+    return None
 
 
 def zip_values(filename, member=None):

@@ -26,8 +26,21 @@ REPOSITORY_URL = (
 )
 REPOSITORY_HTML = pathways.SOURCES / "common-data-set-repository.html"
 REPOSITORY_TABLE_ID = "footable_22584"
+ENTERING_CLASS_URL = (
+    "https://www.collegetransitions.com/dataverse/entering-class-statistics"
+)
 ENTERING_CLASS_HTML = pathways.SOURCES / "entering-class-statistics.html"
-ENTERING_CLASS_TABLE_ID = "footable_22840"
+ENTERING_CLASS_DIRECTORY = pathways.SOURCES / "entering-class"
+ENTERING_CLASS_SNAPSHOTS = (
+    "20190817171002",
+    "20191214123016",
+    "20200920134828",
+    "20211025224724",
+    "20221126120400",
+    "20231207041205",
+    "20250903080132",
+    "20260520194259",
+)
 CDS_YEAR_COLUMNS = {
     "2024-25": 1,
     "2023-24": 2,
@@ -46,22 +59,29 @@ LOCAL_SOURCE_OVERRIDES = {
 
 
 class TableParser(HTMLParser):
-    """Read one identified HTML table into rows of `{"text", "href"}` cells."""
+    """Read HTML tables into rows of `{"text", "href"}` cells.
+
+    Without a table id every table on the page is read.  Archived pages need
+    that: the table engine behind them changes between captures, and so does
+    the id it generates.
+    """
 
     CELLS = ("td", "th")
 
-    def __init__(self, table_id):
+    def __init__(self, table_id=None):
         super().__init__()
         self.table_id = table_id
         self.in_table = False
         self.row = None
         self.cell = None
         self.rows = []
+        self.tables = []
 
     def handle_starttag(self, tag, attrs):
         attributes = dict(attrs)
-        if tag == "table" and attributes.get("id") == self.table_id:
+        if tag == "table" and self.table_id in (None, attributes.get("id")):
             self.in_table = True
+            self.rows = []
         elif self.in_table and tag == "tr":
             self.row = []
         elif self.row is not None and tag in self.CELLS:
@@ -82,13 +102,15 @@ class TableParser(HTMLParser):
             self.rows.append(self.row)
             self.row = None
         elif tag == "table" and self.in_table:
+            self.tables.append(self.rows)
             self.in_table = False
 
 
-def table_rows(path, table_id):
+def table_rows(path, table_id=None):
+    """Rows of the identified table, or of the largest table on the page."""
     parser = TableParser(table_id)
     parser.feed(path.read_text(encoding="utf-8", errors="ignore"))
-    return parser.rows
+    return max(parser.tables, key=len, default=[])
 
 
 def unwrap_repository_url(url):
@@ -126,6 +148,33 @@ def fetch_repository_index():
     partial = REPOSITORY_HTML.with_suffix(".html.part")
     partial.write_bytes(data)
     partial.replace(REPOSITORY_HTML)
+
+
+def entering_class_paths():
+    """Every saved capture of the entering-class page, oldest capture first."""
+    paths = sorted(ENTERING_CLASS_DIRECTORY.glob("*.html"))
+    return paths + [ENTERING_CLASS_HTML] if ENTERING_CLASS_HTML.exists() else paths
+
+
+def fetch_entering_class_snapshots():
+    """Download whichever archived captures of the entering-class page we lack."""
+    ENTERING_CLASS_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    fetched = []
+    for stamp in ENTERING_CLASS_SNAPSHOTS:
+        target = ENTERING_CLASS_DIRECTORY / f"{stamp}.html"
+        if target.exists():
+            continue
+        request = Request(
+            f"https://web.archive.org/web/{stamp}/{ENTERING_CLASS_URL}",
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        with urlopen(request, timeout=60) as response:
+            data = response.read()
+        partial = target.with_suffix(".html.part")
+        partial.write_bytes(data)
+        partial.replace(target)
+        fetched.append(stamp)
+    return fetched
 
 
 def document_id(url):

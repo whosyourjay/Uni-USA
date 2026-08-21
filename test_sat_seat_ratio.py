@@ -72,5 +72,50 @@ class PoolRatioTests(unittest.TestCase):
         self.assertAlmostEqual(sat_seat_ratio.pool_ratio(pools), expected)
 
 
+class ClaimedSeatTests(unittest.TestCase):
+    """Seats at a bar or above must not depend on how ties happen to sort."""
+
+    def pools(self, count, bars):
+        return {
+            unitid: {
+                "act": {
+                    "bar": random.choice(bars),
+                    "pool": random.uniform(1, 1e6),
+                    "seats": random.uniform(0.75, 5_000),
+                }
+            }
+            for unitid in range(count)
+        }
+
+    def test_random_bars_accumulate_downward(self):
+        random.seed(20260815)
+        for _ in range(300):
+            pools = self.pools(random.randint(1, 60), range(1, 37))
+            claimed = sat_seat_ratio.claimed_seats(pools)["act"]
+            total = sum(school["act"]["seats"] for school in pools.values())
+            ranked = sorted(pools, key=lambda unitid: -pools[unitid]["act"]["bar"])
+            self.assertAlmostEqual(claimed[ranked[-1]], total)
+            for higher, lower in zip(ranked, ranked[1:]):
+                self.assertLessEqual(claimed[higher], claimed[lower] + 1e-9)
+                if pools[higher]["act"]["bar"] == pools[lower]["act"]["bar"]:
+                    self.assertAlmostEqual(claimed[higher], claimed[lower])
+
+    def test_ties_share_one_total(self):
+        random.seed(20260815)
+        pools = self.pools(40, [30])
+        claimed = sat_seat_ratio.claimed_seats(pools)["act"]
+        self.assertEqual(len(set(claimed.values())), 1)
+
+    def test_ratio_divides_by_seats_at_or_above(self):
+        pools = {
+            1: {"act": {"bar": 34, "pool": 1_000.0, "seats": 100.0}},
+            2: {"act": {"bar": 30, "pool": 8_000.0, "seats": 300.0}},
+        }
+        claimed = sat_seat_ratio.claimed_seats(pools)
+        self.assertAlmostEqual(
+            sat_seat_ratio.cumulative_pool_ratio(pools[2], claimed, 2), 8_000 / 400
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
