@@ -4,7 +4,7 @@
 import random
 import unittest
 
-import intake_ability as model
+from uniusa import intake_ability as model
 
 
 def random_routes(rng, count=None):

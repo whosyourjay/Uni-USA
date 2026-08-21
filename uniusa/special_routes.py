@@ -6,8 +6,7 @@ single-school share of admits, and a route admit rate are useful scale checks,
 but they are not additive estimates of the national freshman population.
 """
 
-import ability
-import pathways
+from uniusa import ability, pathways
 
 SERVICE_ACADEMY_UNITIDS = {
     128328: "United States Air Force Academy",

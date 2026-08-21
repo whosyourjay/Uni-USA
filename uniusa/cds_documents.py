@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 import zipfile
 
-import pathways
+from uniusa import pathways
 
 
 REPOSITORY_URL = (

@@ -21,8 +21,7 @@ from collections import defaultdict
 from functools import lru_cache
 from statistics import NormalDist, fmean, median
 
-import entering_class
-import intake_ability
+from uniusa import entering_class, intake_ability
 
 NORMAL = NormalDist()
 BETWEEN_SCHOOL_VARIANCE = 0.28

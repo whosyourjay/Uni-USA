@@ -25,12 +25,11 @@ from pathlib import Path
 import re
 import subprocess
 
-import ability
 import fetch_sources
-import pathways
+from uniusa import ability, pathways
 
 
-ROOT = Path(__file__).parent
+ROOT = pathways.ROOT
 SAT_PERCENTILES = ROOT / "sources" / "SAT-national-percentiles.html"
 SAT_ANNUAL_PERCENTILES = ROOT / "sources" / "sat-percentile-1600.csv"
 ACT_PROFILE_YEARS = tuple(sorted(fetch_sources.ACT_PROFILES))

@@ -10,6 +10,17 @@ converting it to the full age-18 scale is still in progress.
 
 Known limitations and planned work live in `TODO.md`.
 
+## Repository layout
+
+- Root Python files are commands for generating outputs, fetching inputs, and
+  inspecting evidence.
+- `uniusa/` contains the reusable undergraduate model and parsers;
+  `uniusa/professional/` contains the law and medicine extensions.
+- `tests/` contains regression and fuzz checks, while `assets/` contains the
+  static evidence-report template.
+- `sources/` and `derived/` are respectively local inputs and generated
+  intermediates. Only their documentation is committed.
+
 ## Admission paths
 
 These mutually exclusive rows cover the full age-18-sized annual flow. Lower
@@ -66,6 +77,7 @@ rounds and legacy are overlays, not routes.
   at each final institution
 - `derived/transfer_origin_scores.tsv` — origin scores and transfer-out weights
 - `derived/transfer_score.tsv` — pooled transfer score and coverage by origin type
+- `derived/route_ability.tsv` — route allocations on the school ability scale
 - `derived/graduate_median_ability.tsv` — each school's graduate-median ability as
   a percentile of the age-18 cohort
 - `law-schools.tsv` — 2024 ABA entering classes scored from LSAT quartiles

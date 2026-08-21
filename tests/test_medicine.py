@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import medicine
+from uniusa.professional import medicine
 
 
 class MedicineParserRegressionTest(unittest.TestCase):

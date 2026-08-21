@@ -3,10 +3,7 @@
 import random
 import unittest
 
-import ability
-import calibrate_tests
-import pathways
-import special_routes
+from uniusa import ability, calibrate_tests, pathways, special_routes
 
 
 class AbilityEvidenceRegressionAndFuzzTests(unittest.TestCase):

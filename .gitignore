@@ -9,3 +9,7 @@ test_evidence.html
 sources/*
 !sources/README.md
 CLAUDE.md
+*.swp
+/SAT interpolation - Distribution.tsv
+/scratch_*
+/todo

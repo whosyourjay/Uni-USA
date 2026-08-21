@@ -12,9 +12,7 @@ key each row by unitID; older ones are matched to IPEDS by name.
 import re
 from functools import lru_cache
 
-import cds_c10
-import cds_documents
-import pathways
+from uniusa import cds_c10, cds_documents, pathways
 
 
 RANK_FIELDS = ("top_10_pct", "top_25_pct", "top_50_pct")

@@ -2,7 +2,7 @@
 
 import unittest
 
-import cds_c10
+from uniusa import cds_c10
 
 
 class C10ExtractionRegressionTests(unittest.TestCase):

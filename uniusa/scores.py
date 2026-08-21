@@ -3,9 +3,7 @@
 from collections import defaultdict
 from statistics import fmean, median
 
-import ability
-import calibrate_tests
-import pathways
+from uniusa import ability, calibrate_tests, pathways
 
 ADMISSION_YEARS = tuple(range(2014, 2024))
 SAT_ADMISSION_YEARS = tuple(range(2016, 2024))

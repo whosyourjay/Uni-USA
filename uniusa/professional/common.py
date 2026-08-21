@@ -5,12 +5,11 @@ import csv
 import re
 import zipfile
 from collections import defaultdict
-from pathlib import Path
 from xml.etree import ElementTree
 
-import pathways
+from uniusa import pathways
+from uniusa.paths import ROOT
 
-ROOT = Path(__file__).parent
 SOURCES = ROOT / "sources"
 
 XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"

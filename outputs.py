@@ -6,13 +6,16 @@ import re
 from collections import Counter
 from html.parser import HTMLParser
 
-import ability
-import final_routes
-import pathways
-import rank_ability
-import sat_seat_ratio
-import scores
-import transfer
+from uniusa import (
+    ability,
+    final_routes,
+    pathways,
+    rank_ability,
+    route_ability,
+    sat_seat_ratio,
+    scores,
+    transfer,
+)
 
 
 ROOT = pathways.ROOT
@@ -312,6 +315,7 @@ def main():
     args = parser.parse_args()
     schools, majors = build_tables()
     pathways.write_tsv(ROOT / "schools.tsv", schools)
+    route_ability.main()
     if not args.schools_only:
         pathways.write_tsv(ROOT / "majors.tsv", majors)
     target = f"{len(schools):,} schools"

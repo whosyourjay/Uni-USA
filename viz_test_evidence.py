@@ -6,12 +6,10 @@ import json
 import re
 from collections import Counter
 
-import ability
-import pathways
-import scores
+from uniusa import ability, pathways, scores
 
 RANK_BAND = 200
-TEMPLATE = pathways.ROOT / "test_evidence_template.html"
+TEMPLATE = pathways.ROOT / "assets" / "test_evidence_template.html"
 REPORT_PAGE = pathways.ROOT / "test_evidence.html"
 
 

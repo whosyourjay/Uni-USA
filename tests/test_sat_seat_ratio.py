@@ -4,8 +4,7 @@
 import random
 import unittest
 
-import calibrate_tests
-import sat_seat_ratio
+from uniusa import calibrate_tests, sat_seat_ratio
 
 
 class PoolRatioTests(unittest.TestCase):

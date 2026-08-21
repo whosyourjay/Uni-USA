@@ -3,7 +3,7 @@
 
 import unittest
 
-import pathways
+from uniusa import pathways
 
 
 class GraduatePathwayTests(unittest.TestCase):

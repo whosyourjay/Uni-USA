@@ -4,7 +4,7 @@
 import random
 import unittest
 
-import rank_ability as model
+from uniusa import rank_ability as model
 
 
 def random_fit(rng):

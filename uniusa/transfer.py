@@ -3,9 +3,7 @@
 
 from collections import defaultdict
 
-import origins
-import pathways
-import scores
+from uniusa import origins, pathways, scores
 
 
 TRANSFER_TYPES = {4, 33}

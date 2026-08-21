@@ -16,12 +16,10 @@ from statistics import fmean
 import re
 import subprocess
 
-import ability
-import calibrate_tests
-import pathways
+from uniusa import ability, calibrate_tests, pathways
 
 
-ROOT = Path(__file__).parent
+ROOT = pathways.ROOT
 YEARS = (2017, 2018, 2019)
 ABOVE_Q25_SHARE = 0.75
 SCHOOLS = {

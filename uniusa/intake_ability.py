@@ -20,11 +20,7 @@ from the freshman class, so the freshmen who stay keep the entering distribution
 from collections import Counter, defaultdict
 from statistics import NormalDist, fmean
 
-import ability
-import calibrate_tests
-import final_routes
-import pathways
-import sat_seat_ratio
+from uniusa import ability, calibrate_tests, final_routes, pathways, sat_seat_ratio
 
 NORMAL = NormalDist()
 DUAL_TAKER_ANCHOR = (2017, 589_753)

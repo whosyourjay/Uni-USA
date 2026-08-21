@@ -7,7 +7,7 @@ by pandemic-era test-optional and test-blind changes, and it overlaps naturally
 with the students completing bachelor's degrees four years later.
 """
 
-import pathways
+from uniusa import pathways
 
 ROOT = pathways.ROOT
 DERIVED = pathways.DERIVED

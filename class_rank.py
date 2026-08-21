@@ -8,10 +8,7 @@ derived table.  Downloading and parsing live in `cds_documents` and `cds_c10`.
 
 import argparse
 import csv
-import ability
-import cds_c10
-import cds_documents
-import pathways
+from uniusa import ability, cds_c10, cds_documents, pathways
 
 
 SCHOOL_TABLE = pathways.ROOT / "schools.tsv"

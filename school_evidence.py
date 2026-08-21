@@ -7,13 +7,15 @@ Usage: python3 school_evidence.py "california institute of tech"
 import re
 import sys
 
-import ability
-import cds_c10
-import cds_documents
-import entering_class
-import pathways
-import rank_ability
-import scores
+from uniusa import (
+    ability,
+    cds_c10,
+    cds_documents,
+    entering_class,
+    pathways,
+    rank_ability,
+    scores,
+)
 
 COUNT_FIELDS = ("APPLCN", "ADMSSN", "ENRLT", "SATNUM", "ACTNUM")
 

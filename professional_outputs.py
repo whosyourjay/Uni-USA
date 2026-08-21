@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate the compact law- and medical-school ability tables."""
 
-import law
-import medicine
+from uniusa.professional import law, medicine
 
 
 def main():

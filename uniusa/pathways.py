@@ -8,11 +8,7 @@ import zipfile
 from collections import defaultdict
 from difflib import SequenceMatcher
 from functools import lru_cache
-from pathlib import Path
-
-ROOT = Path(__file__).parent
-SOURCES = ROOT / "sources"
-DERIVED = ROOT / "derived"
+from uniusa.paths import DERIVED, ROOT, SOURCES
 COMPLETION_YEARS = tuple(range(2014, 2024))
 COMPLETION_SOURCES = {year: f"C{year}_A.zip" for year in COMPLETION_YEARS}
 LATEST_COMPLETIONS = COMPLETION_SOURCES[COMPLETION_YEARS[-1]]

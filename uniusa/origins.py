@@ -3,8 +3,7 @@
 
 from collections import defaultdict
 
-import pathways
-import scores
+from uniusa import pathways, scores
 
 
 ORIGIN_ORDER = (

@@ -4,8 +4,8 @@
 import re
 from html.parser import HTMLParser
 
-import pathways
-import professional
+from uniusa import pathways
+from uniusa.professional import common as professional
 
 SCHOOL_SOURCE = professional.SOURCES / "medical-school-mcat.html"
 MCAT_SOURCE = professional.SOURCES / "mcat-percentiles-2024.txt"

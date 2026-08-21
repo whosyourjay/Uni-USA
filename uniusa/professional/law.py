@@ -5,7 +5,7 @@ import re
 import subprocess
 from statistics import fmean
 
-import professional
+from uniusa.professional import common as professional
 
 ABA_SOURCE = professional.SOURCES / "aba-law-2024.xlsx"
 LSAT_SOURCE = professional.SOURCES / "lsat-percentiles-2021-2024.pdf"

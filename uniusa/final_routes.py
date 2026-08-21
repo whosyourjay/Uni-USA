@@ -4,11 +4,7 @@
 from collections import defaultdict
 from functools import lru_cache
 
-import ability
-import pathways
-import scores
-import special_routes
-import transfer
+from uniusa import ability, pathways, scores, special_routes, transfer
 
 
 ROUTE_ORDER = (
