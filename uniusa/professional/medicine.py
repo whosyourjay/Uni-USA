@@ -4,7 +4,7 @@
 import re
 from html.parser import HTMLParser
 
-from uniusa import pathways
+from uniusa import pathways, school_distributions
 from uniusa.professional import common as professional
 
 SCHOOL_SOURCE = professional.SOURCES / "medical-school-mcat.html"
@@ -192,10 +192,24 @@ def matched_count_rows(school_names):
     return rows
 
 
-def score_row(row, table, origins):
+def applicant_mixture(origins, distributions=None):
+    """AAMC applicant-weighted mixture of undergraduate school CDFs."""
+    distributions = distributions or school_distributions.distributions_by_name()
+    components = tuple(
+        (distributions[row["school"]], row["applicants"])
+        for row in origins
+        if row["school"] in distributions
+    )
+    return school_distributions.DistributionMixture(components)
+
+
+def score_row(row, table, mixture, ability_cache=None):
     mcat = professional.numeric(row.get("Median MCAT Score"))
     percentile = professional.interpolate(table, mcat) if mcat else None
-    ability = professional.weighted_quantile(origins, percentile / 100) if percentile else None
+    ability_cache = {} if ability_cache is None else ability_cache
+    if percentile is not None and percentile not in ability_cache:
+        ability_cache[percentile] = mixture.quantile(percentile / 100)
+    ability = ability_cache.get(percentile)
     return {
         "school": row["Medical School"],
         "ability": round(ability, 3) if ability is not None else "",
@@ -204,9 +218,14 @@ def score_row(row, table, origins):
     }
 
 
-def school_rows(origins, counts):
+def school_rows(origins, counts, mixture=None):
     table = mcat_percentiles()
-    rows = [score_row(row, table, origins) for row in medical_school_rows()]
+    mixture = mixture or applicant_mixture(origins)
+    ability_cache = {}
+    rows = [
+        score_row(row, table, mixture, ability_cache)
+        for row in medical_school_rows()
+    ]
     for row in rows:
         row["students"] = counts.get(row["school"], "")
     rows = [
@@ -220,19 +239,25 @@ def school_rows(origins, counts):
 
 def main():
     origins = feeder_rows()
-    professional.write_tsv(FEEDER_OUTPUT, origins)
+    distributions = school_distributions.distributions_by_name()
+    professional.write_tsv(FEEDER_OUTPUT, (
+        row | {"distribution_available": row["school"] in distributions}
+        for row in origins
+    ))
+    mixture = applicant_mixture(origins, distributions)
     medical_names = [row["Medical School"] for row in medical_school_rows()]
     count_rows = matched_count_rows(medical_names)
     professional.write_tsv(COUNT_OUTPUT, count_rows)
     counts = {row["school"]: row["students"] for row in count_rows if row["school"]}
-    rows = school_rows(origins, counts)
+    rows = school_rows(origins, counts, mixture)
     professional.write_tsv(OUTPUT, rows)
     matched = sum(row["applicants"] for row in origins if row["ability"] != "")
     total = sum(row["applicants"] for row in origins)
     counted = sum(row["students"] for row in count_rows if row["school"])
     all_students = sum(row["students"] for row in count_rows)
     print(f"{OUTPUT.name}: {len(rows)} MD schools; feeder match {matched}/{total}; "
-          f"matriculant match {counted}/{all_students}")
+          f"distribution mass {mixture.weight:.0f}; matriculant match "
+          f"{counted}/{all_students}")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ The endpoint is the age-18 ability distribution of an institution's bachelor's g
 - [x] Medical and law schools
 - [ ] Replace the law all-bachelor origin proxy with a recent law-applicant undergraduate feeder table
 - [ ] Match the remaining 5.4% of applicants in AAMC's published feeder table; origins below its 50-applicant threshold are also absent
+- [ ] Estimate within-school selection into medical applications; school CDFs currently treat applicants like the full bachelor class
 - [ ] Score GRE and JD-Next law entrants and add osteopathic medical schools
 - [ ] The 324 schools whose median graduate transferred in or sent no score
 - [ ] Recruited-athlete and audition entrants, counted today but carrying no ability

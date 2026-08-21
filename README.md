@@ -129,7 +129,11 @@ provisional bridge: ABA supplies the destination counts and LSAT bars, but no
 recent public origin-by-undergraduate-school table. `lsat_share` shows how much
 of the entering class supplied an LSAT; GRE and JD-Next entrants remain unscored.
 
-Medicine maps the median MCAT rank onto the AAMC applicant-origin distribution.
+Medicine maps the median MCAT rank onto the AAMC applicant-weighted mixture of
+undergraduate-school ability distributions. Each school CDF reconstructs its
+SAT/ACT submitter distribution from the published q25 and q75 bars, with the
+current no-score and transfer assumptions, so high-performing applicants are
+not capped at their undergraduate school's median.
 AAMC's table covers the 39,763 applicants from institutions supplying at least
 50 applicants, or 75.6% of all 52,577 applicants. We match an undergraduate
 score to 94.6% of that published mass. Whole-number MCAT percentile ties are
