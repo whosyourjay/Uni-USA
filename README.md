@@ -119,6 +119,7 @@ Downloaded sources and generated tables stay local and out of Git.
 
 Run `python3 outputs.py --schools-only` to regenerate `schools.tsv`, then
 `python3 professional_outputs.py` to regenerate both professional-school files.
+Run `python3 viz_medical_applicants.py` for the applicant-distribution chart.
 
 ## Professional schools
 
@@ -136,10 +137,10 @@ current no-score and transfer assumptions, so high-performing applicants are
 not capped at their undergraduate school's median.
 AAMC's table covers the 39,763 applicants from institutions supplying at least
 50 applicants, or 75.6% of all 52,577 applicants. We match an undergraduate
-score to 94.6% of that published mass. Whole-number MCAT percentile ties are
-spread evenly within their rounding intervals. The school MCAT table is a
-secondary transcription of MSAR because AAMC does not publish a free bulk
-school-level score table.
+school to 94.6% of that published mass and have usable school distributions for
+93.3%. Whole-number MCAT percentile ties are spread evenly within their
+rounding intervals. The school MCAT table is a secondary transcription of MSAR
+because AAMC does not publish a free bulk school-level score table.
 
 ## Coverage
 
