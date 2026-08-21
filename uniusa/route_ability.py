@@ -29,14 +29,15 @@ def read_rows(path):
 
 def rows(schools=SCHOOLS, routes=ROUTES):
     """The US model reports a school-level median, shared by its route seats."""
-    ability = {row["school"]: row["cohort_median"] for row in read_rows(schools)
-               if row["cohort_median"]}
+    ability = {
+        row["school"]: float(row["cohort_median"] or 0)
+        for row in read_rows(schools)
+    }
     missing = set()
     for row in read_rows(routes):
-        score = ability.get(row["institution"])
-        if score is None:
+        score = ability.get(row["institution"], 0.0)
+        if score == 0:
             missing.add(row["institution"])
-            continue
         route = row["route"]
         family = FAMILIES.get(route)
         if family is None:
@@ -44,7 +45,7 @@ def rows(schools=SCHOOLS, routes=ROUTES):
         yield {"family": family, "route": route, "ability": score,
                "seats": row["estimated_bachelors"]}
     if missing:
-        print(f"{len(missing):,} institutions have no measured ability")
+        print(f"{len(missing):,} institutions use the low-ability fallback")
 
 
 def main():
