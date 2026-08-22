@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from functools import cached_property
 from statistics import fmean
 
-from uniusa import ability, calibrate_tests, intake_ability, pathways
-from uniusa import sat_seat_ratio
+from uniusa import ability, calibrate_tests, intake_ability, intake_curve, pathways
+from uniusa import test_counts
 
 
 @dataclass(frozen=True)
@@ -17,12 +17,17 @@ class CohortYearDistribution:
     entrants: int
     submitters: int
     direct_share: float
+    transfer_distribution: tuple = ()
 
     def cdf(self, percentile):
         above = intake_ability.intake_above(
             percentile, self.routes, self.submitters
         )
         survival = self.direct_share * above / self.entrants
+        transfer_above = intake_curve.empirical_share_above(
+            percentile, self.transfer_distribution
+        )
+        survival += (1 - self.direct_share) * (transfer_above or 0.0)
         return min(1.0, max(0.0, 1 - survival))
 
 
@@ -100,7 +105,7 @@ def direct_shares(path=pathways.ROOT / "schools.tsv"):
     return shares
 
 
-def year_distributions(year, shares):
+def year_distributions(year, shares, transfer_scores=None):
     """Usable school distributions for one admission year."""
     sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
     act_counts, _ = calibrate_tests.load_act_composite_percentiles(
@@ -121,16 +126,22 @@ def year_distributions(year, shares):
             entrants=entrants,
             submitters=intake_ability.distinct_submitters(routes, entrants),
             direct_share=shares[unitid],
+            transfer_distribution=intake_ability.cohort_transfer_distribution(
+                (transfer_scores or {}).get(unitid), year
+            ),
         )
     return rows
 
 
-def school_distributions(years=sat_seat_ratio.YEARS):
+def school_distributions(years=test_counts.YEARS):
     """School ability CDFs keyed by IPEDS institution id."""
     shares = direct_shares()
+    transfer_scores = intake_ability.default_transfer_scores()
     grouped = defaultdict(list)
     for year in years:
-        for unitid, distribution in year_distributions(year, shares).items():
+        for unitid, distribution in year_distributions(
+            year, shares, transfer_scores
+        ).items():
             grouped[unitid].append(distribution)
     return {
         unitid: SchoolDistribution(tuple(distributions))
@@ -138,7 +149,7 @@ def school_distributions(years=sat_seat_ratio.YEARS):
     }
 
 
-def distributions_by_name(years=sat_seat_ratio.YEARS):
+def distributions_by_name(years=test_counts.YEARS):
     """School ability CDFs keyed by canonical institution name."""
     directory = pathways.load_directory()
     return {

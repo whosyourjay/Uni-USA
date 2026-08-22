@@ -112,24 +112,9 @@ missing data rather than a class without scores, which leaves all three columns
 blank for the 899 schools that never report. Students who sent both tests appear
 in each submitter count, so the three percentages need not sum to 100.
 
-`ability_pool_ratio` asks how many students nationally could clear a school's
-published bar for each seat at that bar or above. A q25 bar sits above three
-quarters of that route's submitters, so the seats it competes for are
-`0.75 * SATNUM` and `0.75 * ACTNUM`. The SAT pool is the national test-taker
-total times the share scoring above the school's `SATVR25 + SATMT25`; the ACT
-pool sums the composite frequencies at or above `ACTCM25`. Each year sums both
-pools and both seat counts before dividing, and the column averages that ratio
-over 2017–2019, the years with published national SAT taker totals.
-
-The denominator counts every seat behind a bar at least as high, running each
-route down its own bar order, so a student who clears a school's bar is measured
-against everywhere else they could have gone. Schools sharing a bar share a
-total, which matters because the ACT composite is a coarse integer: 178 schools
-posted a 19 in 2019. Dividing by a school's own seats instead made the ratio
-scale with how few seats it has, which put Harvey Mudd at 464 against
-Princeton's 141; against seats at that bar or above they read 29 and 8. Caltech
-holds the highest SAT and ACT bar of the 1,280 schools with one, so nothing
-sits above it and its ratio is unchanged.
+`ability_pool_ratio` uses the same final-enrollee Q50 as `cohort_median`. It
+divides the age-18 population above that percentile by all bachelor seats at
+that median or higher.
 
 Downloaded sources and generated tables stay local and out of Git.
 
@@ -341,7 +326,6 @@ python3 fetch_sources.py
 python3 pathways.py
 python3 ability.py
 python3 calibrate_tests.py
-python3 sat_seat_ratio.py
 python3 special_routes.py
 python3 origins.py
 python3 transfer.py

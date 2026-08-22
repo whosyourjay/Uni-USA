@@ -12,21 +12,35 @@ which says how many enrolled submitters cleared a known ability level.  Both
 tests land on the one cohort axis, so the four combine into a single intake
 curve.  Students who sent neither test are assumed to sit below every bar.
 
-The curve counts entrants, but the median is read among graduates.  Transfers in
-arrive below every published bar, and the students who leave are drawn uniformly
-from the freshman class, so the freshmen who stay keep the entering distribution.
+The curve counts entrants, but the median is read among graduates. Transfer
+ability comes from the stack-ranked origin pool dealt to each destination.
+Students who leave are drawn uniformly from the freshman class, so the freshmen
+who stay keep the entering distribution.
 """
 
 from collections import Counter, defaultdict
-from statistics import NormalDist, fmean
+from functools import lru_cache
+from statistics import fmean
 
-from uniusa import ability, calibrate_tests, final_routes, pathways, sat_seat_ratio
+from uniusa import (
+    ability,
+    calibrate_tests,
+    final_routes,
+    intake_curve,
+    pathways,
+    test_counts,
+    transfer,
+)
+from uniusa.intake_curve import (
+    distinct_submitters,
+    intake_above,
+    normal_share,
+    route_share,
+    solve_percentile,
+    uniform_share,
+)
 
-NORMAL = NormalDist()
 DUAL_TAKER_ANCHOR = (2017, 589_753)
-QUARTILE_MODEL = "normal"
-IQR_Z = 2 * NORMAL.inv_cdf(0.75)
-SOLVE_STEPS = 60
 OUTPUT = pathways.DERIVED / "graduate_median_ability.tsv"
 
 
@@ -38,7 +52,7 @@ def national_act_takers(year):
 
 
 def taker_product(year):
-    return sat_seat_ratio.national_sat_takers(year) * national_act_takers(year)
+    return test_counts.national_sat_takers(year) * national_act_takers(year)
 
 
 def dual_takers(year):
@@ -59,7 +73,7 @@ def dual_takers(year):
 def cohort_reach(year):
     """Share of the age-18 cohort sitting at least one of the two tests."""
     union = (
-        sat_seat_ratio.national_sat_takers(year)
+        test_counts.national_sat_takers(year)
         + national_act_takers(year)
         - dual_takers(year)
     )
@@ -80,42 +94,6 @@ def act_share_above(bar, counts):
     """Share of national ACT takers at or above a composite bar."""
     total = sum(counts.values())
     return sum(count for score, count in counts.items() if score >= bar) / total
-
-
-def uniform_share(percentile, low, high):
-    """Submitters at or above `percentile` when each quartile spreads evenly.
-
-    The middle half fills the reported inter-quartile band, the top quarter
-    fills everything above it, and the bottom quarter fills everything below.
-    """
-    if percentile >= 100:
-        return 0.0
-    if percentile >= high:
-        return 0.25 * (100 - percentile) / (100 - high)
-    if percentile >= low:
-        return 0.25 + 0.5 * (high - percentile) / (high - low)
-    if percentile <= 0:
-        return 1.0
-    return 0.75 + 0.25 * (low - percentile) / low
-
-
-def normal_share(percentile, low, high):
-    """Submitters at or above `percentile` under a normal pinned to both bars."""
-    if not 0 < percentile < 100:
-        return 1.0 if percentile <= 0 else 0.0
-    low_z, high_z = NORMAL.inv_cdf(low / 100), NORMAL.inv_cdf(high / 100)
-    sigma = (high_z - low_z) / IQR_Z
-    if sigma <= 0:
-        return 0.0
-    return 1 - NORMAL.cdf((NORMAL.inv_cdf(percentile / 100) - (low_z + high_z) / 2) / sigma)
-
-
-def route_share(percentile, low, high, model=None):
-    if high <= low:
-        return None
-    if (model or QUARTILE_MODEL) == "normal":
-        return normal_share(percentile, low, high)
-    return uniform_share(percentile, low, high)
 
 
 def school_routes(admission, year, sat_table, act_counts):
@@ -148,68 +126,28 @@ def school_routes(admission, year, sat_table, act_counts):
     return routes
 
 
-def distinct_submitters(routes, entrants):
-    """Entrants who sent at least one score, capped by the entering class.
-
-    IPEDS counts a dual submitter twice, so the sum overstates the class
-    whenever it exceeds it; the excess is the smallest overlap consistent with
-    both counts.
-    """
-    sent = sum(route["n"] for route in routes.values())
-    return min(sent, entrants) if entrants > 0 else sent
-
-
-def intake_above(percentile, routes, submitters):
-    """Enrolled submitters at or above a cohort percentile.
-
-    A student who sent both tests is counted once by each route, and dual
-    submitters clear a bar at the same rate as the whole submitting group, so
-    the overlap cancels out of the submitter-weighted share.
-    """
-    weighted, sent = 0.0, 0
-    for route in routes.values():
-        share = route_share(percentile, route["low"], route["high"])
-        if share is None:
-            continue
-        weighted += route["n"] * share
-        sent += route["n"]
-    if not sent:
-        return None
-    return submitters * weighted / sent
+def cohort_transfer_distribution(destination, year):
+    """A destination's transfer-origin blocks on the age-cohort scale."""
+    if not destination:
+        return ()
+    distribution = destination.get("distribution", ())
+    if not distribution and destination.get("transfer_score", "") != "":
+        distribution = ((destination["transfer_score"], 1.0),)
+    return tuple(
+        (cohort_percentile(1 - score / 100, year), weight)
+        for score, weight in distribution
+    )
 
 
-def solve_percentile(target, routes, submitters):
-    """Cohort percentile leaving `target` enrolled submitters above it."""
-    if intake_above(0.0, routes, submitters) is None:
-        return None
-    if submitters < target:
-        return None
-    low, high = 0.0, 100.0
-    for _ in range(SOLVE_STEPS):
-        middle = (low + high) / 2
-        if intake_above(middle, routes, submitters) >= target:
-            low = middle
-        else:
-            high = middle
-    return (low + high) / 2
-
-
-def graduate_target(graduates, transfers, entrants):
-    """Entrants sitting above the median graduate under the transfer model.
-
-    Transfers in are treated as the school's weakest students, so the median
-    graduate is a freshman unless transfers take more than half the degrees.
-    Leaving is independent of ability, which leaves the surviving freshmen with
-    the entering class's distribution: the median graduate's quantile among
-    direct graduates is its quantile among entrants.
-    """
-    direct = graduates - transfers
-    if entrants <= 0 or direct <= graduates / 2:
-        return None
-    return entrants * (graduates / 2) / direct
-
-
-def year_result(admission, year, target, sat_table, act_counts):
+def year_result(
+    admission,
+    year,
+    graduates,
+    transfers,
+    transfer_distribution,
+    sat_table,
+    act_counts,
+):
     """One school-year's median, or the reason there is not one."""
     routes = school_routes(admission, year, sat_table, act_counts)
     if not routes:
@@ -217,17 +155,21 @@ def year_result(admission, year, target, sat_table, act_counts):
     entrants = pathways.number(admission.get("ENRLT"))
     submitters = distinct_submitters(routes, entrants)
     result = {"submitters": submitters, "entrants": entrants, "median": None}
-    if target is None:
-        result["reason"] = "most degrees go to transfers"
-        return result
-    median = solve_percentile(target, routes, submitters)
+    median = intake_curve.solve_graduate_median(
+        routes,
+        submitters,
+        entrants,
+        graduates,
+        transfers,
+        transfer_distribution,
+    )
     if median is None:
-        result["reason"] = "median graduate sent no score"
+        result["reason"] = "median graduate ability is unobserved"
         return result
     return result | {"median": median, "bracketed": bracketing(median, routes)}
 
 
-def year_results(year, graduates, transfers):
+def year_results(year, graduates, transfers, transfer_scores):
     """Every school reporting bars that year, keyed by unitid."""
     sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
     act_counts, _ = calibrate_tests.load_act_composite_percentiles(
@@ -238,24 +180,50 @@ def year_results(year, graduates, transfers):
         awards = graduates.get(unitid, 0)
         if awards <= 0:
             continue
-        target = graduate_target(
-            awards, transfers.get(unitid, 0.0),
-            pathways.number(admission.get("ENRLT")),
+        transfer_count = transfers.get(unitid, 0.0)
+        result = year_result(
+            admission,
+            year,
+            awards,
+            transfer_count,
+            cohort_transfer_distribution(transfer_scores.get(unitid), year),
+            sat_table,
+            act_counts,
         )
-        result = year_result(admission, year, target, sat_table, act_counts)
         if result is not None:
             results[unitid] = result
     return results
 
 
-def year_percentiles(years=sat_seat_ratio.YEARS):
+@lru_cache(maxsize=None)
+def default_transfer_scores():
+    """Build destination transfer distributions for standalone model runs."""
+    graduates = pathways.graduate_rows(
+        pathways.load_directory(),
+        pathways.load_completions(),
+        pathways.load_outcomes(),
+        pathways.load_enrollment(),
+    )
+    institution_rows = final_routes.institution_route_rows(
+        graduates,
+        ability.load_admissions(),
+        ability.load_characteristics(),
+        pathways.load_population(),
+    )
+    return transfer.destination_scores(institution_rows, graduates)
+
+
+def year_percentiles(years=test_counts.YEARS, transfer_scores=None):
     """Graduate median percentile, keyed by institution and admission year."""
     graduates = pathways.mean_bachelors()
     transfers = final_routes.transfer_graduates()
+    transfer_scores = transfer_scores or default_transfer_scores()
     return {
         (unitid, year): result["median"]
         for year in years
-        for unitid, result in year_results(year, graduates, transfers).items()
+        for unitid, result in year_results(
+            year, graduates, transfers, transfer_scores
+        ).items()
         if result["median"] is not None
     }
 
@@ -279,14 +247,17 @@ def row_status(scored, results):
     return ""
 
 
-def school_rows(years=sat_seat_ratio.YEARS):
+def school_rows(years=test_counts.YEARS, transfer_scores=None):
     """One row per school, averaging the per-year graduate medians."""
     graduates = pathways.mean_bachelors()
     transfers = final_routes.transfer_graduates()
+    transfer_scores = transfer_scores or default_transfer_scores()
     directory = pathways.load_directory()
     collected = defaultdict(list)
     for year in years:
-        for unitid, result in year_results(year, graduates, transfers).items():
+        for unitid, result in year_results(
+            year, graduates, transfers, transfer_scores
+        ).items():
             collected[unitid].append(result)
     rows = []
     for unitid, results in collected.items():
@@ -317,7 +288,7 @@ def main():
     flagged = Counter(row["status"] for row in rows if row["status"])
     print(f"{len(rows)} schools; reach "
           + ", ".join(f"{year} {100 * cohort_reach(year):.1f}%"
-                      for year in sat_seat_ratio.YEARS))
+                      for year in test_counts.YEARS))
     for status, count in flagged.most_common():
         print(f"  {count:>5} {status}")
     print(f"\n{'school':<44} {'grads':>7} {'subs':>7} {'median':>8}")

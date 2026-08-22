@@ -68,6 +68,22 @@ class TransferPoolTests(unittest.TestCase):
                 self.assertLessEqual(slice["pool_bottom"], slice["transfer_score"])
                 self.assertLessEqual(slice["transfer_score"], slice["pool_top"])
 
+    def test_distribution_preserves_each_slice_mean(self):
+        rng = random.Random(23)
+        for _ in range(500):
+            pool, seats = random_pool(rng), random_seats(rng)
+            if not sum(seats):
+                continue
+            for slice, count in zip(transfer.deal_pool(pool, seats), seats):
+                if not count:
+                    self.assertEqual(slice["distribution"], ())
+                    continue
+                total = sum(weight for _, weight in slice["distribution"])
+                mean = sum(
+                    score * weight for score, weight in slice["distribution"]
+                ) / total
+                self.assertAlmostEqual(mean, slice["transfer_score"], places=3)
+
 
 if __name__ == "__main__":
     unittest.main()

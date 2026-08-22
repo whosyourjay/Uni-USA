@@ -146,11 +146,13 @@ def deal_pool(pool, seats, epsilon=1e-9):
     index, remaining = 0, pool[0][1]
     for demand in seats:
         wanted, taken, carried, edges = demand * scale, 0.0, 0.0, []
+        distribution = []
         while wanted - taken > epsilon and index < len(pool):
             score, _ = pool[index]
             amount = min(wanted - taken, remaining)
             edges = [edges[0] if edges else score, score]
             carried += score * amount
+            distribution.append((score, amount))
             taken += amount
             remaining -= amount
             if remaining <= epsilon:
@@ -160,6 +162,7 @@ def deal_pool(pool, seats, epsilon=1e-9):
             "transfer_score": round(carried / taken, 3) if taken else "",
             "pool_top": edges[0] if edges else "",
             "pool_bottom": edges[1] if edges else "",
+            "distribution": tuple(distribution),
         }
 
 

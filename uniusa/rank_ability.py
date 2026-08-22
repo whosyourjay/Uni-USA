@@ -192,10 +192,11 @@ def cohort_year_percentiles():
     return intake_ability.year_percentiles()
 
 
-def cohort_percentiles():
+def cohort_percentiles(percentiles=None):
     """Cohort-scale graduate medians per institution, over the years it reports."""
     collected = defaultdict(list)
-    for (unitid, _), percentile in cohort_year_percentiles().items():
+    percentiles = cohort_year_percentiles() if percentiles is None else percentiles
+    for (unitid, _), percentile in percentiles.items():
         collected[unitid].append(percentile)
     return {unitid: round(fmean(values), 3) for unitid, values in collected.items()}
 

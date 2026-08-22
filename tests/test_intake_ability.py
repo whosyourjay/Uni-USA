@@ -4,7 +4,7 @@
 import random
 import unittest
 
-from uniusa import intake_ability as model
+from uniusa import intake_curve as model
 
 
 def random_routes(rng, count=None):
@@ -46,31 +46,46 @@ class TransferModelTests(unittest.TestCase):
     def test_uniform_leaving_keeps_the_entering_median(self):
         """Without transfers in, the median graduate is the median entrant."""
         rng = random.Random(31)
-        for _ in range(2000):
-            graduates, entrants = rng.uniform(1, 9000), rng.uniform(1, 9000)
-            self.assertAlmostEqual(
-                model.graduate_target(graduates, 0.0, entrants), entrants / 2
-            )
-
-    def test_transfers_in_push_the_median_down(self):
-        """Weak transfers displace freshmen, so more entrants sit above."""
-        rng = random.Random(37)
-        for _ in range(2000):
-            graduates, entrants = rng.uniform(1, 9000), rng.uniform(1, 9000)
-            first, second = sorted(rng.uniform(0, 0.49) * graduates for _ in range(2))
-            self.assertLessEqual(
-                model.graduate_target(graduates, first, entrants),
-                model.graduate_target(graduates, second, entrants) + 1e-9,
-            )
-
-    def test_no_target_once_transfers_take_half_the_degrees(self):
-        rng = random.Random(41)
         for _ in range(1000):
-            graduates, entrants = rng.uniform(1, 9000), rng.uniform(1, 9000)
-            transfers = graduates * rng.uniform(0.5, 1.0)
-            self.assertIsNone(
-                model.graduate_target(graduates, transfers, entrants)
+            routes = random_routes(rng)
+            entrants = rng.uniform(1, 9000)
+            submitters = model.distinct_submitters(routes, entrants)
+            self.assertAlmostEqual(
+                model.solve_graduate_median(
+                    routes, submitters, entrants, entrants, 0.0, ()
+                ),
+                model.solve_percentile(entrants / 2, routes, submitters),
             )
+
+    def test_transfer_ability_moves_the_final_median(self):
+        """The old all-transfers-are-weak shortcut must not survive."""
+        rng = random.Random(37)
+        for _ in range(500):
+            routes = random_routes(rng)
+            entrants = graduates = rng.uniform(500, 9000)
+            transfers = graduates * rng.uniform(0.1, 0.45)
+            submitters = model.distinct_submitters(routes, entrants)
+            weak = model.solve_graduate_median(
+                routes, submitters, entrants, graduates, transfers, ((1.0, 1.0),)
+            )
+            strong = model.solve_graduate_median(
+                routes, submitters, entrants, graduates, transfers, ((99.9, 1.0),)
+            )
+            if weak is not None and strong is not None:
+                self.assertGreaterEqual(strong + 1e-9, weak)
+
+    def test_transfer_majority_can_identify_the_median(self):
+        routes = {"sat": {"n": 100, "low": 70.0, "high": 90.0}}
+        median = model.solve_graduate_median(
+            routes, 100, 100, 100, 70, ((80.0, 1.0),)
+        )
+        self.assertAlmostEqual(median, 80.0)
+
+    def test_missing_transfer_distribution_is_not_silently_weakened(self):
+        routes = {"sat": {"n": 100, "low": 70.0, "high": 90.0}}
+        self.assertIsNone(
+            model.solve_graduate_median(routes, 100, 100, 100, 20, ())
+        )
 
 
 class IntakeCurveTests(unittest.TestCase):

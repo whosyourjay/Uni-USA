@@ -8,12 +8,13 @@ from html.parser import HTMLParser
 
 import professional_outputs
 from uniusa import (
+    ability_pool,
     ability,
     final_routes,
+    intake_ability,
     pathways,
     rank_ability,
     route_ability,
-    sat_seat_ratio,
     scores,
     transfer,
 )
@@ -147,11 +148,16 @@ def school_rows(graduates, routes, transfer_scores, institution_routes):
         ]
     test_shares = scores.test_share_means()
     blank_shares = {column: "" for column in scores.TEST_SHARE_COLUMNS}
-    pool_ratios = sat_seat_ratio.pool_ratio_means(set(paths_by_id))
-    cohort_medians = rank_ability.cohort_percentiles()
-    rank_summaries, _ = rank_ability.rank_percentiles()
-    blank_rank = {column: "" for column in rank_ability.RANK_COLUMNS}
     mean_bachelors = pathways.mean_bachelors()
+    cohort_years = intake_ability.year_percentiles(transfer_scores=transfer_scores)
+    cohort_medians = rank_ability.cohort_percentiles(cohort_years)
+    rank_summaries, _ = rank_ability.rank_percentiles(percentiles=cohort_years)
+    blank_rank = {column: "" for column in rank_ability.RANK_COLUMNS}
+    pool_ratios = ability_pool.ratios(
+        cohort_medians,
+        mean_bachelors,
+        pathways.load_population(),
+    )
     rows = []
     for graduate in graduates:
         route = scores.route_fields(graduate["unitid"], routes)
