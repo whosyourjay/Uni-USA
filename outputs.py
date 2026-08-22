@@ -320,6 +320,27 @@ def merged_school_table(schools):
     return [{column: row[column] for column in SCHOOL_COLUMNS} for row in combined]
 
 
+def merge_existing_professional_tables(path=ROOT / "schools.tsv"):
+    """Refresh MD/JD rows without rebuilding unchanged undergraduate estimates."""
+    undergraduates = list(pathways.bachelor_rows(pathways.read_tsv(path)))
+    combined = undergraduates + professional_rows()
+    combined.sort(key=lambda row: (
+        row["cohort_median"] == "",
+        -float(row["cohort_median"] or 0),
+        row["freshman_score"] == "",
+        -float(row["freshman_score"] or 0),
+        -float(row["bachelors"] or 0),
+        row["program"],
+        row["school"],
+    ))
+    pathways.write_tsv(
+        path,
+        ({column: row.get(column, "") for column in SCHOOL_COLUMNS}
+         for row in combined),
+    )
+    return len(undergraduates), len(combined) - len(undergraduates)
+
+
 def build_tables(with_majors=False):
     graduates = pathways.graduate_rows(
         pathways.load_directory(),
@@ -369,7 +390,18 @@ def main():
     parser.add_argument(
         "--majors", action="store_true", help="also write the unused majors.tsv"
     )
+    parser.add_argument(
+        "--professionals-only",
+        action="store_true",
+        help="refresh MD/JD outputs and merge them into the existing schools.tsv",
+    )
     args = parser.parse_args()
+    if args.professionals_only:
+        professional_outputs.main()
+        undergraduates, professionals = merge_existing_professional_tables()
+        print(f"wrote {undergraduates:,} undergraduate and {professionals:,} "
+              "professional schools")
+        return
     detailed, majors = build_tables(args.majors)
     schools = [
         {column: row[column] for column in SCHOOL_COLUMNS} for row in detailed

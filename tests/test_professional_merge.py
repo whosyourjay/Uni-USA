@@ -5,6 +5,7 @@ import random
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import outputs
 from uniusa import pathways
@@ -69,6 +70,29 @@ class ProfessionalMergeTests(unittest.TestCase):
             medians = [row["cohort_median"] for row in combined]
             for earlier, later in zip(medians, medians[1:]):
                 self.assertGreaterEqual(earlier, later)
+
+    def test_fast_merge_replaces_professionals_without_touching_bachelors(self):
+        blank = {column: "" for column in outputs.SCHOOL_COLUMNS}
+        bachelor = blank | {
+            "school": "Bachelor School",
+            "program": pathways.BACHELOR_PROGRAM,
+            "cohort_median": 80,
+            "bachelors": 100,
+        }
+        medical = blank | {
+            "school": "Medical School",
+            "program": "MD",
+            "cohort_median": 90,
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "schools.tsv"
+            pathways.write_tsv(path, [bachelor])
+            with patch.object(outputs, "professional_rows", return_value=[medical]):
+                counts = outputs.merge_existing_professional_tables(path)
+            rows = pathways.read_tsv(path)
+        self.assertEqual(counts, (1, 1))
+        self.assertEqual([row["school"] for row in rows],
+                         ["Medical School", "Bachelor School"])
 
 
 if __name__ == "__main__":
