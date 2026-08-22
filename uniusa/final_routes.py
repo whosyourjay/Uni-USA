@@ -232,12 +232,7 @@ def domestic_award_levels():
 
 def route_score_rows(institution_rows, graduates):
     lookup = scores.route_lookup(graduates)
-    _, transfer_summary = transfer.build_transfer_tables()
-    transfer_score = next(
-        row["weighted_median_freshman_score"]
-        for row in transfer_summary
-        if row["origin_type"] == "All origins"
-    )
+    transfer_scores = transfer.destination_scores(institution_rows, graduates)
     grouped = defaultdict(list)
     for row in institution_rows:
         score = lookup.get((row["unitid"], row["route"]))
@@ -247,7 +242,7 @@ def route_score_rows(institution_rows, graduates):
             fields = scores.route_fields(row["unitid"], lookup)
             score = fields["freshman_score"] or None
         if row["route"] == "Transfer":
-            score = transfer_score
+            score = transfer_scores[row["unitid"]]["transfer_score"] or None
         if score is not None:
             grouped[row["route"]].append((score, row["estimated_bachelors"]))
 
@@ -289,14 +284,40 @@ def build_tables():
         institution_rows,
         national_route_rows(institution_rows, graduates, population),
         route_score_rows(institution_rows, graduates),
+        transfer_destination_rows(institution_rows, graduates),
     )
 
 
+def transfer_destination_rows(institution_rows, graduates):
+    """Each destination's slice of the stack-ranked transfer pool, best first."""
+    names = {row["unitid"]: row["institution"] for row in institution_rows}
+    return [
+        {
+            "unitid": row["unitid"],
+            "institution": names[row["unitid"]],
+            "transfer_bachelors": row["seats"],
+            "freshman_score": row["freshman_score"],
+            "open_admission_share": row["open_share"],
+            "transfer_score": row["transfer_score"],
+            "pool_top": row["pool_top"],
+            "pool_bottom": row["pool_bottom"],
+            "rank_basis": (
+                "measured freshman score" if row["freshman_score"] != ""
+                else "unmeasured; ranked below every scored school"
+            ),
+        }
+        for row in transfer.destination_scores(institution_rows, graduates).values()
+    ]
+
+
 def main():
-    institution_rows, national_rows, score_rows = build_tables()
+    institution_rows, national_rows, score_rows, destination_rows = build_tables()
     pathways.write_tsv(pathways.DERIVED / "institution_final_routes.tsv", institution_rows)
     pathways.write_tsv(pathways.DERIVED / "final_admission_paths.tsv", national_rows)
     pathways.write_tsv(pathways.DERIVED / "final_route_scores.tsv", score_rows)
+    pathways.write_tsv(
+        pathways.DERIVED / "transfer_destination_scores.tsv", destination_rows
+    )
     print(f"wrote {len(national_rows)} exhaustive national pathways")
 
 
