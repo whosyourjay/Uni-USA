@@ -1,4 +1,4 @@
-<title>What the test columns measure</title>
+<title>U.S. university ability model</title>
 <style>
   :root {
     --page: #f2f3f6;
@@ -175,6 +175,10 @@
     color: var(--ink-2);
     white-space: nowrap;
   }
+  .quantile-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .quantile-card { border-top: 2px solid var(--submissions); padding: 9px 4px 0; }
+  .quantile-card b { display: block; font-family: var(--mono); font-size: 18px; }
+  .quantile-card span { color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
   .scroller { overflow-x: auto; }
   details { font-size: 14px; color: var(--ink-2); }
   summary { cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
@@ -187,17 +191,21 @@
 <main>
   <header>
     <div class="eyebrow">IPEDS ADM · top of the ranking · entering classes 2014–2023</div>
-    <h1>The top 100 kept reporting. Their students stopped testing.</h1>
+    <h1>The U.S. university ability model</h1>
     <p class="standfirst">
-      Every school in the top 100 of <code>schools.tsv</code> files submitter counts — the
-      first blank sits at rank 1,224. What changed is the students behind those counts.
-      Through 2020 the top 100 collected <strong>more test submissions than it had
-      entrants</strong>, because students sent both the SAT and the ACT. In 2021 that inverted
-      in a single year, and it has not come back.
+      Undergraduate medians combine SAT/ACT quartiles, transfer origins, and class-rank
+      evidence on one age-cohort scale. The same school distributions place professional
+      applicants and their eventual programs on that scale.
     </p>
   </header>
 
   <div class="tiles" id="tiles"></div>
+
+  <section>
+    <h2>Where medical-school applicants sit in the age cohort</h2>
+    <div class="chart" id="medical"></div>
+    <div class="quantile-strip" id="medical-quantiles"></div>
+  </section>
 
   <section>
     <h2>Top 100: submissions fell below the entering class in 2021</h2>
@@ -393,6 +401,40 @@ function trend() {
   });
 }
 
+function medical() {
+  const host = document.getElementById("medical");
+  const W = 1000, H = 330, L = 48, R = 20, T = 18, B = 52;
+  const { svg, place, hide } = frame(host, W, H);
+  const rows = DATA.medical.bands;
+  const maximum = Math.max(...rows.map(([, value]) => value)) * 1.12;
+  const band = (W - L - R) / rows.length;
+  const y = (value) => T + (1 - value / maximum) * (H - T - B);
+
+  [0, maximum / 2, maximum].forEach((value) => {
+    el("line", { class: "grid", x1: L, x2: W - R, y1: y(value), y2: y(value) }, svg);
+    el("text", { class: "axis", x: L - 8, y: y(value) + 4, "text-anchor": "end" }, svg)
+      .textContent = `${value.toFixed(0)}%`;
+  });
+  rows.forEach(([label, share], i) => {
+    const x = L + i * band + 7;
+    const width = band - 14;
+    el("rect", { x, y: y(share), width, height: y(0) - y(share), rx: 3,
+      fill: "var(--submissions)" }, svg);
+    el("text", { class: "mark-label", x: x + width / 2, y: y(share) - 8,
+      "text-anchor": "middle" }, svg).textContent = `${share.toFixed(1)}%`;
+    el("text", { class: "axis", x: x + width / 2, y: H - 18,
+      "text-anchor": "middle" }, svg).textContent = label;
+    const hit = el("rect", { class: "hit", x: L + i * band, y: T,
+      width: band, height: H - T - B }, svg);
+    hit.addEventListener("mouseenter", () => place(x + width / 2, y(share) - 14,
+      `<b>Age-cohort percentiles ${label}</b><div class="row"><span>Applicants</span><b>${share.toFixed(2)}%</b></div>`));
+    hit.addEventListener("mouseleave", hide);
+  });
+  document.getElementById("medical-quantiles").innerHTML = DATA.medical.quantiles
+    .map(([quantile, ability]) => `<div class="quantile-card"><b>${ability.toFixed(2)}</b>`
+      + `<span>${quantile}th applicant percentile</span></div>`).join("");
+}
+
 function remainder() {
   const host = document.getElementById("remainder");
   const W = 1000, H = 210, L = 54, R = 96, T = 14, B = 30;
@@ -494,6 +536,7 @@ function tables() {
 }
 
 tiles();
+medical();
 trend();
 remainder();
 bands();

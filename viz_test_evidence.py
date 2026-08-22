@@ -7,10 +7,14 @@ import re
 from collections import Counter
 
 from uniusa import ability, pathways, scores
+import viz_medical_applicants
 
 RANK_BAND = 200
 TEMPLATE = pathways.ROOT / "assets" / "test_evidence_template.html"
-REPORT_PAGE = pathways.ROOT / "test_evidence.html"
+REPORT_PAGES = (
+    pathways.ROOT / "index.html",
+    pathways.ROOT / "test_evidence.html",
+)
 
 
 def cohort_rows(admissions, schools, size):
@@ -90,6 +94,9 @@ def main():
     }
     schools = school_rows(admissions)
     blank = [row for row in schools if row["share"] is None]
+    _, medical_bands, medical_quantiles, medical_coverage = (
+        viz_medical_applicants.applicant_summary()
+    )
     report = {
         "hundred": cohort_rows(admissions, schools, 100),
         "ten": cohort_rows(admissions, schools, 10),
@@ -106,11 +113,18 @@ def main():
             "first_blank": min(row["position"] for row in blank),
             "awards": sum(row["bachelors"] for row in schools),
         },
+        "medical": {
+            "bands": medical_bands,
+            "quantiles": medical_quantiles,
+            "coverage": medical_coverage,
+        },
     }
-    REPORT_PAGE.write_text(render(report), encoding="utf-8")
+    page = render(report)
+    for target in REPORT_PAGES:
+        target.write_text(page, encoding="utf-8")
     latest = report["hundred"][-1]
     print(
-        f"wrote {REPORT_PAGE.name}: top 100 reporting {latest['schools']} schools in "
+        f"wrote {REPORT_PAGES[0].name}: top 100 reporting {latest['schools']} schools in "
         f"{latest['year']} at {(latest['sat'] + latest['act']) / latest['entrants']:.2f} "
         f"submissions per entrant; first blank at rank "
         f"{report['totals']['first_blank']:,}"

@@ -3,10 +3,14 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from statistics import fmean
+from statistics import NormalDist, fmean
 
 from uniusa import ability, calibrate_tests, intake_ability, intake_curve, pathways
 from uniusa import test_counts
+
+
+NORMAL = NormalDist()
+MIN_PERCENTILE = 1e-6
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,23 @@ class SchoolDistribution:
 
     def cdf(self, percentile):
         return fmean(year.cdf(percentile) for year in self.years)
+
+
+@dataclass(frozen=True)
+class NormalSchoolDistribution:
+    """Full class distribution pinned to a school median and observed spread."""
+
+    median: float
+    spread: float
+
+    def cdf(self, percentile):
+        if percentile <= 0:
+            return 0.0
+        if percentile >= 100:
+            return 1.0
+        center = NORMAL.inv_cdf(self.median / 100)
+        value = NORMAL.inv_cdf(percentile / 100)
+        return NORMAL.cdf((value - center) / self.spread)
 
 
 @dataclass
@@ -133,8 +154,8 @@ def year_distributions(year, shares, transfer_scores=None):
     return rows
 
 
-def school_distributions(years=test_counts.YEARS):
-    """School ability CDFs keyed by IPEDS institution id."""
+def measured_school_distributions(years=test_counts.YEARS):
+    """Partial school CDFs directly implied by reported SAT/ACT routes."""
     shares = direct_shares()
     transfer_scores = intake_ability.default_transfer_scores()
     grouped = defaultdict(list)
@@ -149,8 +170,96 @@ def school_distributions(years=test_counts.YEARS):
     }
 
 
+def number(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def estimated_percentile(row, years=test_counts.YEARS, reach=None):
+    """Best school median available, expressed on the age-18 cohort scale."""
+    for field in ("cohort_median", "class_rank_percentile"):
+        value = number(row.get(field))
+        if value is not None:
+            return value
+    value = number(row.get("ability"))
+    if value is None:
+        return None
+    if reach is None:
+        reach = fmean(intake_ability.cohort_reach(year) for year in years)
+    return 100 * (1 - (1 - value / 100) * reach)
+
+
+def weighted_median(values):
+    values = sorted(values)
+    middle = sum(weight for _, weight in values) / 2
+    running = 0.0
+    for value, weight in values:
+        running += weight
+        if running >= middle:
+            return value
+    return values[-1][0]
+
+
+def school_spreads(years=test_counts.YEARS):
+    """Within-school z spreads from each reported SAT/ACT interquartile range."""
+    grouped = defaultdict(list)
+    all_values = []
+    for year in years:
+        sat_table = calibrate_tests.load_sat_total_user_percentiles(year)
+        act_counts, _ = calibrate_tests.load_act_composite_percentiles(
+            calibrate_tests.nearest_act_year(year)
+        )
+        for unitid, admission in ability.load_admissions(year).items():
+            routes = intake_ability.school_routes(
+                admission, year, sat_table, act_counts
+            )
+            for route in routes.values():
+                low = min(100 - MIN_PERCENTILE, max(MIN_PERCENTILE, route["low"]))
+                high = min(100 - MIN_PERCENTILE, max(MIN_PERCENTILE, route["high"]))
+                spread = (
+                    NORMAL.inv_cdf(high / 100) - NORMAL.inv_cdf(low / 100)
+                ) / intake_curve.IQR_Z
+                if spread > 0:
+                    pair = (spread, route["n"])
+                    grouped[unitid].append(pair)
+                    all_values.append(pair)
+    fallback = weighted_median(all_values)
+    return {
+        unitid: sum(value * weight for value, weight in values)
+        / sum(weight for _, weight in values)
+        for unitid, values in grouped.items()
+    }, fallback
+
+
+def school_estimates(path=pathways.ROOT / "schools.tsv", years=test_counts.YEARS):
+    """Estimated cohort median keyed by IPEDS institution id."""
+    unitids = {
+        row["INSTNM"]: unitid for unitid, row in pathways.load_directory().items()
+    }
+    return {
+        unitids[row["school"]]: percentile
+        for row in pathways.bachelor_rows(pathways.read_tsv(path))
+        if row["school"] in unitids
+        if (percentile := estimated_percentile(row, years)) is not None
+    }
+
+
+def school_distributions(years=test_counts.YEARS):
+    """Full estimated class CDFs keyed by IPEDS institution id."""
+    spreads, fallback = school_spreads(years)
+    return {
+        unitid: NormalSchoolDistribution(
+            min(100 - MIN_PERCENTILE, max(MIN_PERCENTILE, percentile)),
+            spreads.get(unitid, fallback),
+        )
+        for unitid, percentile in school_estimates(years=years).items()
+    }
+
+
 def distributions_by_name(years=test_counts.YEARS):
-    """School ability CDFs keyed by canonical institution name."""
+    """Full estimated class CDFs keyed by canonical institution name."""
     directory = pathways.load_directory()
     return {
         directory[unitid]["INSTNM"]: distribution

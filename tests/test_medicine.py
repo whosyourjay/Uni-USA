@@ -37,6 +37,17 @@ class MedicineParserRegressionTest(unittest.TestCase):
             candidates[1],
         )
 
+    def test_feeder_alias_selects_the_specific_ipeds_campus(self):
+        target = {"school": "University of Minnesota-Twin Cities"}
+        candidates = [(target["school"], target)]
+        exact = medicine.candidate_index(candidates)
+        self.assertIs(
+            medicine.match_feeder(
+                "University of Minnesota", "Minneapolis", candidates, exact
+            ),
+            target,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

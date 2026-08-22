@@ -124,12 +124,11 @@ def school_candidates(path=None):
     return [
         (row["school"], {
             "school": row["school"],
-            "ability": numeric(row["cohort_median"]) or numeric(row.get("ability")),
+            "ability": school_distributions.estimated_percentile(row),
             "bachelors": numeric(row.get("bachelors")),
         })
         for row in rows
-        if numeric(row.get("cohort_median")) is not None
-        or numeric(row.get("ability")) is not None
+        if school_distributions.estimated_percentile(row) is not None
     ]
 
 

@@ -14,6 +14,19 @@ COUNT_SOURCE = professional.SOURCES / "aamc-medical-matriculants-2023.txt"
 FEEDER_OUTPUT = pathways.DERIVED / "medical_feeders.tsv"
 COUNT_OUTPUT = pathways.DERIVED / "medical_school_counts.tsv"
 OUTPUT = professional.ROOT / "medical-schools.tsv"
+FEEDER_ALIASES = {
+    "University of Minnesota": "University of Minnesota-Twin Cities",
+    "Louisiana St University and Agricultural and Mechanical Col": (
+        "Louisiana State University and Agricultural & Mechanical College"
+    ),
+    "Penn State University Park": "Pennsylvania State University-Main Campus",
+    "University of Puerto Rico-Rio Piedras Campus": (
+        "University of Puerto Rico-Rio Piedras"
+    ),
+    "University of Puerto Rico-Mayaguez Campus": "University of Puerto Rico-Mayaguez",
+    "Indiana University-Purdue University-Indianapolis": "Indiana University-Indianapolis",
+    "Kent State University Kent Campus": "Kent State University at Kent",
+}
 MEDICAL_STOP_WORDS = {
     "at", "college", "medicine", "medical", "of", "school", "the", "university",
 }
@@ -108,6 +121,11 @@ def candidate_index(candidates):
 
 
 def match_feeder(name, city, candidates, exact):
+    alias = FEEDER_ALIASES.get(name)
+    if alias:
+        match = exact.get(pathways.normalize_school(alias))
+        if match:
+            return match
     for variant in feeder_variants(name, city):
         match = exact.get(pathways.normalize_school(variant))
         if match:
