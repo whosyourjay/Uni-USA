@@ -40,7 +40,7 @@ def school_rows(admissions):
     directory = pathways.load_directory()
     by_name = {row["INSTNM"]: unitid for unitid, row in directory.items()}
     with open("schools.tsv", encoding="utf-8", newline="") as source:
-        ranked = list(csv.DictReader(source, delimiter="\t"))
+        ranked = pathways.bachelor_rows(csv.DictReader(source, delimiter="\t"))
     rows = []
     for position, row in enumerate(ranked, 1):
         unitid = by_name.get(row["school"])

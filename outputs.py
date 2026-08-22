@@ -6,6 +6,7 @@ import re
 from collections import Counter
 from html.parser import HTMLParser
 
+import professional_outputs
 from uniusa import (
     ability,
     final_routes,
@@ -21,17 +22,30 @@ from uniusa import (
 ROOT = pathways.ROOT
 CIP_BROWSE = pathways.SOURCES / "CIP2020-browse.html"
 TEST_PERCENTILE_COLUMNS = ("sat_taker_percentile", "act_taker_percentile")
+PROFESSIONAL_PROGRAMS = (
+    ("MD", ROOT / "medical-schools.tsv", "MCAT", "mcat", "mcat_taker_percentile"),
+    ("JD", ROOT / "law-schools.tsv", "LSAT", "lsat", "lsat_taker_percentile"),
+)
+PROFESSIONAL_COLUMNS = (
+    "students",
+    "entrance_test",
+    "entrance_score",
+    "entrance_taker_percentile",
+)
 SCHOOL_COLUMNS = (
     "school",
+    "program",
     "cohort_median",
     "ability",
     "bachelors",
+    *PROFESSIONAL_COLUMNS,
     "freshman_score",
     *scores.TEST_SHARE_COLUMNS,
     *TEST_PERCENTILE_COLUMNS,
     "ability_pool_ratio",
     *rank_ability.RANK_COLUMNS,
     "transfer_share",
+    "transfer_score",
 )
 MAJOR_COLUMNS = ("school", "major") + SCHOOL_COLUMNS[1:]
 
@@ -101,7 +115,8 @@ def scored_components(route, paths, transfer_score):
     freshman = [
         (score, count) for score, count in freshman if score != "" and count > 0
     ]
-    return freshman, freshman + [(transfer_score, paths["Transfer"])]
+    transfers = [(transfer_score, paths["Transfer"])] if transfer_score != "" else []
+    return freshman, freshman + transfers
 
 
 def assign_ranks(rows, tiebreak):
@@ -113,7 +128,7 @@ def assign_ranks(rows, tiebreak):
     rows.sort(key=lambda row: (
         row["cohort_median"] == "", -(row["cohort_median"] or 0),
         row["freshman_score"] == "", -(row["freshman_score"] or 0),
-        -row["bachelors"],
+        -(row["bachelors"] or 0),
     ) + tiebreak(row))
     scored = (
         row for row in rows
@@ -124,7 +139,7 @@ def assign_ranks(rows, tiebreak):
     return rows
 
 
-def school_rows(graduates, routes, transfer_score, institution_routes):
+def school_rows(graduates, routes, transfer_scores, institution_routes):
     paths_by_id = {}
     for row in institution_routes:
         paths_by_id.setdefault(row["unitid"], {})[row["route"]] = row[
@@ -145,6 +160,7 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
         transfer_count = paths["Transfer"]
         direct = bachelors - transfer_count
         share = transfer_count / bachelors
+        transfer_score = transfer_scores[graduate["unitid"]]["transfer_score"]
         freshman_components, components = scored_components(
             route, paths, transfer_score
         )
@@ -159,6 +175,8 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
             status = "rough: scored freshman routes plus pooled transfer score"
         rows.append({
             "rank": "",
+            "program": pathways.BACHELOR_PROGRAM,
+            **{column: "" for column in PROFESSIONAL_COLUMNS},
             "cohort_median": cohort_medians.get(graduate["unitid"], ""),
             "ability": round(rough_ability, 3) if rough_ability != "" else "",
             "ability_coverage": round(coverage, 6) if coverage else "",
@@ -167,7 +185,7 @@ def school_rows(graduates, routes, transfer_score, institution_routes):
             **test_shares.get(graduate["unitid"], blank_shares),
             "ability_pool_ratio": pool_ratios.get(graduate["unitid"], ""),
             **rank_summaries.get(graduate["unitid"], blank_rank),
-            "transfer_score": transfer_score if share != "" and share > 0 else "",
+            "transfer_score": transfer_score,
             "school_id": graduate["unitid"],
             "school": graduate["institution"],
             "state": graduate["state"],
@@ -235,6 +253,8 @@ def major_rows(schools, titles):
             direct, transfer = current_split(bachelors, school["transfer_share"])
             rows.append({
                 "rank": "",
+                "program": school["program"],
+                **{column: school[column] for column in PROFESSIONAL_COLUMNS},
                 "cohort_median": school["cohort_median"],
                 "ability": school["ability"],
                 "ability_coverage": school["ability_coverage"],
@@ -259,18 +279,47 @@ def major_rows(schools, titles):
     return assign_ranks(rows, lambda row: (row["school_id"], row["cip_code"]))
 
 
-def build_tables():
+def professional_rows():
+    """Law and medical schools, already scored on the bachelor cohort scale.
+
+    Both models read a school's entrance-test median onto the ability
+    distribution of the undergraduates who apply, so their score means the same
+    thing as a bachelor row's `cohort_median` and ranks against it directly.
+    """
+    blank = {column: "" for column in SCHOOL_COLUMNS}
+    rows = []
+    for program, path, test, score, percentile in PROFESSIONAL_PROGRAMS:
+        for row in pathways.read_tsv(path):
+            rows.append({
+                **blank,
+                "rank": "",
+                "school_id": 0,
+                "school": row["school"],
+                "program": program,
+                "cohort_median": float(row["ability"]) if row["ability"] else "",
+                "students": row["students"],
+                "entrance_test": test,
+                "entrance_score": row[score],
+                "entrance_taker_percentile": row[percentile],
+            })
+    return rows
+
+
+def merged_school_table(schools):
+    """The bachelor rows and the professional rows ranked as one list."""
+    combined = assign_ranks(
+        schools + professional_rows(),
+        lambda row: (row["school_id"], row["school"]),
+    )
+    return [{column: row[column] for column in SCHOOL_COLUMNS} for row in combined]
+
+
+def build_tables(with_majors=False):
     graduates = pathways.graduate_rows(
         pathways.load_directory(),
         pathways.load_completions(),
         pathways.load_outcomes(),
         pathways.load_enrollment(),
-    )
-    _, transfer_summary = transfer.build_transfer_tables()
-    transfer_score = next(
-        row["weighted_median_freshman_score"]
-        for row in transfer_summary
-        if row["origin_type"] == "All origins"
     )
     admissions = ability.load_admissions()
     institution_routes = final_routes.institution_route_rows(
@@ -282,9 +331,14 @@ def build_tables():
     detailed_schools = school_rows(
         graduates,
         scores.route_lookup(graduates),
-        transfer_score,
+        transfer.destination_scores(institution_routes, graduates),
         institution_routes,
     )
+    return detailed_schools, major_table(detailed_schools) if with_majors else []
+
+
+def major_table(detailed_schools):
+    """Per-major rows, checked against the school totals they were split from."""
     detailed_majors = major_rows(detailed_schools, load_cip_titles())
     major_counts = Counter()
     for row in detailed_majors:
@@ -298,30 +352,34 @@ def build_tables():
             f"{len(unreconciled):,} schools do not reconcile with their majors: "
             + ", ".join(unreconciled[:3])
         )
-    schools = [
-        {column: row[column] for column in SCHOOL_COLUMNS}
-        for row in detailed_schools
-    ]
-    majors = [
+    return [
         {column: row[column] for column in MAJOR_COLUMNS}
         for row in detailed_majors
     ]
-    return schools, majors
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--schools-only", action="store_true")
+    parser.add_argument(
+        "--majors", action="store_true", help="also write the unused majors.tsv"
+    )
     args = parser.parse_args()
-    schools, majors = build_tables()
+    detailed, majors = build_tables(args.majors)
+    schools = [
+        {column: row[column] for column in SCHOOL_COLUMNS} for row in detailed
+    ]
     pathways.write_tsv(ROOT / "schools.tsv", schools)
     route_ability.main()
-    if not args.schools_only:
+    professional_outputs.main()
+    merged = merged_school_table(detailed)
+    pathways.write_tsv(ROOT / "schools.tsv", merged)
+    target = f"{len(schools):,} undergraduate and {len(merged) - len(schools):,} " \
+             f"professional schools"
+    if args.majors:
         pathways.write_tsv(ROOT / "majors.tsv", majors)
-    target = f"{len(schools):,} schools"
-    if not args.schools_only:
-        target += f" and {len(majors):,} school-major rows"
-    print(f"wrote {target}; using separate freshman evidence and the pooled transfer-origin score")
+        target += f", and {len(majors):,} school-major rows"
+    print(f"wrote {target}; using separate freshman evidence and each school's "
+          f"slice of the stack-ranked transfer pool")
 
 
 if __name__ == "__main__":
