@@ -7,6 +7,8 @@ by pandemic-era test-optional and test-blind changes, and it overlaps naturally
 with the students completing bachelor's degrees four years later.
 """
 
+from functools import lru_cache
+
 from uniusa import pathways
 
 ROOT = pathways.ROOT
@@ -60,6 +62,7 @@ def present(row, fields):
     return all(pathways.number(row.get(field)) > 0 for field in fields)
 
 
+@lru_cache(maxsize=None)
 def load_admissions(year=ADMISSION_YEAR):
     return {
         pathways.number(row["UNITID"]): row

@@ -29,6 +29,7 @@ MAJOR_MEAN_COLUMNS = {"unitid": int, "cip_code": str, "mean_domestic": float}
 ENTRY_LEVELS = {4: "first_time", 19: "transfer"}
 OM_COHORTS = {10: "direct_full_time", 20: "direct_part_time",
               30: "transfer_full_time", 40: "transfer_part_time"}
+BACHELOR_PROGRAM = "Bachelor's"
 LEVEL_NAMES = {1: "four-or-more-year", 2: "two-to-four-year", 3: "under-two-year"}
 CONTROL_NAMES = {1: "public", 2: "private nonprofit", 3: "private for-profit"}
 NAME_ALIASES = {"st": "saint", "univ": "university"}
@@ -40,6 +41,29 @@ MAIN_CAMPUS = "main campus"
 def number(value):
     value = (value or "").strip()
     return int(value) if value not in {"", "."} else 0
+
+
+def bachelor_rows(rows):
+    """Only the undergraduate rows of the merged school table.
+
+    The table also lists the law and medical schools scored from those rows, so
+    anything measuring undergraduate institutions has to drop them first.
+    """
+    return [
+        row for row in rows
+        if row.get("program", BACHELOR_PROGRAM) == BACHELOR_PROGRAM
+    ]
+
+
+def weighted_median(rows, weight, value):
+    """Value of the row sitting at the weighted midpoint."""
+    total = sum(weight(row) for row in rows)
+    cumulative = 0
+    for row in sorted(rows, key=value):
+        cumulative += weight(row)
+        if cumulative >= total / 2:
+            return value(row)
+    raise ValueError("Empty weighted median")
 
 
 def normalize_school(name):
