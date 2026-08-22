@@ -343,6 +343,5 @@ school, because the top-quarter anchor saturates at 100% wherever the model is
 worth running. The class spread is fitted once across schools with both a C10 and
 a published test percentile.
 
-`python3 viz_test_evidence.py` renders `test_evidence.html` from
-`test_evidence_template.html`, charting how test-score evidence at the top of the
-ranking broke in 2021.
+`python3 viz_test_evidence.py` renders `index.html`, including the test-evidence
+history and the modeled medical-applicant ability distribution.
