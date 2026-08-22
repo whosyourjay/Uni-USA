@@ -84,6 +84,37 @@ def rank_share(national_z, fit):
     return NORMAL.cdf((-base + math.sqrt(discriminant)) / (2 * slope))
 
 
+def solve_normal(normal, size, tolerance=1e-9):
+    """Solve the normal equations, resting collinear features at zero.
+
+    Features that repeat a direction the others already span leave no pivot to
+    divide by.  Nothing chooses between the coefficients they could share, so
+    those stay at zero and the directions the design does determine still fit.
+    """
+    scale = max((abs(value) for row in normal for value in row[:size]), default=0.0)
+    pivots = {}
+    row = 0
+    for column in range(size):
+        candidates = range(row, size)
+        best = max(candidates, key=lambda index: abs(normal[index][column]),
+                   default=None)
+        if best is None or abs(normal[best][column]) <= tolerance * scale:
+            continue
+        normal[row], normal[best] = normal[best], normal[row]
+        for other in range(size):
+            if other != row:
+                factor = normal[other][column] / normal[row][column]
+                for index in range(column, size + 1):
+                    normal[other][index] -= factor * normal[row][index]
+        pivots[column] = row
+        row += 1
+    return [
+        normal[pivots[column]][size] / normal[pivots[column]][column]
+        if column in pivots else 0.0
+        for column in range(size)
+    ]
+
+
 def least_squares(designs, targets):
     """Coefficients, residual spread and r2 of an ordinary least-squares fit."""
     size = len(designs[0])
@@ -93,15 +124,7 @@ def least_squares(designs, targets):
         ]
         for i in range(size)
     ]
-    for column in range(size):
-        pivot = max(range(column, size), key=lambda row: abs(normal[row][column]))
-        normal[column], normal[pivot] = normal[pivot], normal[column]
-        for other in range(size):
-            if other != column:
-                factor = normal[other][column] / normal[column][column]
-                for index in range(column, size + 1):
-                    normal[other][index] -= factor * normal[column][index]
-    coefficients = [row[size] / row[index] for index, row in enumerate(normal)]
+    coefficients = solve_normal(normal, size)
     residuals = [
         target - sum(c * x for c, x in zip(coefficients, design))
         for design, target in zip(designs, targets)
@@ -109,9 +132,10 @@ def least_squares(designs, targets):
     mean = sum(targets) / len(targets)
     total = sum((target - mean) ** 2 for target in targets)
     error = sum(residual**2 for residual in residuals)
+    freedom = len(targets) - size
     return {
         "coefficients": coefficients,
-        "residual_sd": math.sqrt(error / (len(targets) - size)),
+        "residual_sd": math.sqrt(error / freedom) if freedom > 0 else 0.0,
         "r2": 1 - error / total if total else 0.0,
     }
 
