@@ -21,10 +21,12 @@ def random_table(rng):
     for index in range(rng.randint(2, 60)):
         program = rng.choice(PROGRAMS)
         bachelor = program == pathways.BACHELOR_PROGRAM
+        median = round(rng.uniform(1, 100), 3)
         rows.append({
             "school": f"School {index}",
             "program": program,
-            "cohort_median": round(rng.uniform(1, 100), 3),
+            "test_taker_median": median,
+            "cohort_median": median,
             "ability": round(rng.uniform(1, 100), 3) if bachelor else "",
             "bachelors": round(rng.uniform(1, 9000), 3) if bachelor else "",
             "school_id": index + 1 if bachelor else 0,
@@ -50,7 +52,7 @@ class ProfessionalMergeTests(unittest.TestCase):
                 self.assertTrue(all(origin["applicants"] > 0 for origin in origins))
 
     def test_merging_keeps_every_row_and_orders_by_the_shared_scale(self):
-        """One list, sorted by cohort median, whatever program a row came from."""
+        """One list, sorted by test-taker median, whatever its program."""
         rng = random.Random(3)
         for _ in range(200):
             schools = [
@@ -67,7 +69,7 @@ class ProfessionalMergeTests(unittest.TestCase):
                 lambda row: (row["school_id"], row["school"]),
             )
             self.assertEqual(len(combined), len(schools) + len(professional_rows))
-            medians = [row["cohort_median"] for row in combined]
+            medians = [row["test_taker_median"] for row in combined]
             for earlier, later in zip(medians, medians[1:]):
                 self.assertGreaterEqual(earlier, later)
 
@@ -76,12 +78,14 @@ class ProfessionalMergeTests(unittest.TestCase):
         bachelor = blank | {
             "school": "Bachelor School",
             "program": pathways.BACHELOR_PROGRAM,
+            "test_taker_median": 80,
             "cohort_median": 80,
             "bachelors": 100,
         }
         medical = blank | {
             "school": "Medical School",
             "program": "MD",
+            "test_taker_median": 90,
             "cohort_median": 90,
         }
         with tempfile.TemporaryDirectory() as folder:

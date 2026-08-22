@@ -1,2 +1,2 @@
 year	percentile_counts	B	B_display	cohort_scaled	source
-2023	SAT, ACT	3371676	3.37M	yes	2019 SAT/ACT union: 2,220,087 + 1,914,817 - 763,228 dual sitters
+2023	SAT, ACT	3371676	3.37M	no	2019 SAT/ACT union: 2,220,087 + 1,914,817 - 763,228 dual sitters

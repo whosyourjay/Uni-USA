@@ -15,6 +15,7 @@ from uniusa import (
     pathways,
     rank_ability,
     route_ability,
+    scales,
     scores,
     transfer,
 )
@@ -36,6 +37,7 @@ PROFESSIONAL_COLUMNS = (
 SCHOOL_COLUMNS = (
     "school",
     "program",
+    "test_taker_median",
     "cohort_median",
     "ability",
     "bachelors",
@@ -121,19 +123,19 @@ def scored_components(route, paths, transfer_score):
 
 
 def assign_ranks(rows, tiebreak):
-    """Sort by the cohort median and number every row carrying a score.
+    """Sort by the test-taker median and number every row carrying a score.
 
-    Schools without a measured median keep their place on the older test-taker
-    proxy, below every school the cohort scale reaches.
+    Schools without a measured median keep their place on the older freshman
+    proxy, below every school the final-enrollee scale reaches.
     """
     rows.sort(key=lambda row: (
-        row["cohort_median"] == "", -(row["cohort_median"] or 0),
+        row["test_taker_median"] == "", -(row["test_taker_median"] or 0),
         row["freshman_score"] == "", -(row["freshman_score"] or 0),
         -(row["bachelors"] or 0),
     ) + tiebreak(row))
     scored = (
         row for row in rows
-        if row["cohort_median"] != "" or row["freshman_score"] != ""
+        if row["test_taker_median"] != "" or row["freshman_score"] != ""
     )
     for rank, row in enumerate(scored, 1):
         row["rank"] = rank
@@ -183,6 +185,9 @@ def school_rows(graduates, routes, transfer_scores, institution_routes):
             "rank": "",
             "program": pathways.BACHELOR_PROGRAM,
             **{column: "" for column in PROFESSIONAL_COLUMNS},
+            "test_taker_median": round(scales.test_taker_percentile(
+                cohort_medians.get(graduate["unitid"], "")
+            ), 3) if cohort_medians.get(graduate["unitid"], "") != "" else "",
             "cohort_median": cohort_medians.get(graduate["unitid"], ""),
             "ability": round(rough_ability, 3) if rough_ability != "" else "",
             "ability_coverage": round(coverage, 6) if coverage else "",
@@ -261,6 +266,7 @@ def major_rows(schools, titles):
                 "rank": "",
                 "program": school["program"],
                 **{column: school[column] for column in PROFESSIONAL_COLUMNS},
+                "test_taker_median": school["test_taker_median"],
                 "cohort_median": school["cohort_median"],
                 "ability": school["ability"],
                 "ability_coverage": school["ability_coverage"],
@@ -302,6 +308,9 @@ def professional_rows():
                 "school_id": 0,
                 "school": row["school"],
                 "program": program,
+                "test_taker_median": round(scales.test_taker_percentile(
+                    row["ability"]
+                ), 3) if row["ability"] else "",
                 "cohort_median": float(row["ability"]) if row["ability"] else "",
                 "students": row["students"],
                 "entrance_test": test,
@@ -325,8 +334,8 @@ def merge_existing_professional_tables(path=ROOT / "schools.tsv"):
     undergraduates = list(pathways.bachelor_rows(pathways.read_tsv(path)))
     combined = undergraduates + professional_rows()
     combined.sort(key=lambda row: (
-        row["cohort_median"] == "",
-        -float(row["cohort_median"] or 0),
+        row["test_taker_median"] == "",
+        -float(row["test_taker_median"] or 0),
         row["freshman_score"] == "",
         -float(row["freshman_score"] or 0),
         -float(row["bachelors"] or 0),

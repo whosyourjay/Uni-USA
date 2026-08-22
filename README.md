@@ -72,7 +72,7 @@ rounds and legacy are overlays, not routes.
 ## Outputs
 
 - `schools.tsv` — 2,356 undergraduate institutions and the 355 law and medical
-  schools scored from them, ordered together by `cohort_median`. `program` says
+  schools scored from them, ordered together by `test_taker_median`. `program` says
   which list a row came from: `Bachelor's`, `JD`, or `MD`
 - `majors.tsv` — institution-major pairs that inherit the institution score.
   Nothing reads them, so `outputs.py` writes the file only under `--majors`
@@ -93,8 +93,9 @@ rounds and legacy are overlays, not routes.
 - `medical-schools.tsv` — MD schools scored from median MCAT and 2023 matriculants
 
 Both professional models read an entrance-test median onto the ability
-distribution of the undergraduates who apply, so their score already means what
-`cohort_median` means and ranks against it directly. `outputs.py` writes the
+distribution of the undergraduates who apply. The model keeps its age-cohort
+intermediate, then exports `test_taker_median` on the common SAT/ACT-taker scale.
+`outputs.py` writes the
 undergraduate rows first, rebuilds the two professional tables from them, then
 writes the merged list, and the professional models keep only `Bachelor's` rows
 so their own output never feeds their origins.
@@ -112,9 +113,9 @@ missing data rather than a class without scores, which leaves all three columns
 blank for the 899 schools that never report. Students who sent both tests appear
 in each submitter count, so the three percentages need not sum to 100.
 
-`ability_pool_ratio` uses the same final-enrollee Q50 as `cohort_median`. It
-divides the age-18 population above that percentile by all bachelor seats at
-that median or higher.
+`ability_pool_ratio` uses the same final-enrollee Q50 as `test_taker_median`. It
+divides test takers above that percentile by all bachelor seats at that median
+or higher; this count is unchanged when a comparison places non-takers below it.
 
 Downloaded sources and generated tables stay local and out of Git.
 

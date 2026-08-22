@@ -28,6 +28,7 @@ import subprocess
 from statistics import fmean
 
 from uniusa.paths import DERIVED
+from uniusa import scales
 from uniusa.professional import common as professional
 from uniusa.professional import medicine
 
@@ -115,6 +116,11 @@ def main():
     ))
     mixture = professional.origin_mixture(origins)
     rows = school_rows(aba, table, mixture)
+    for row in rows:
+        row["test_taker_ability"] = (
+            round(scales.test_taker_percentile(row["ability"]), 3)
+            if row["ability"] != "" else ""
+        )
     professional.write_tsv(OUTPUT, rows)
     scored = sum(row["ability"] != "" for row in rows)
     print(

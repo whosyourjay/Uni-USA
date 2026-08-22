@@ -4,7 +4,7 @@
 import re
 from html.parser import HTMLParser
 
-from uniusa import pathways, school_distributions
+from uniusa import pathways, scales, school_distributions
 from uniusa.professional import common as professional
 
 SCHOOL_SOURCE = professional.SOURCES / "medical-school-mcat.html"
@@ -263,6 +263,11 @@ def main():
     professional.write_tsv(COUNT_OUTPUT, count_rows)
     counts = {row["school"]: row["students"] for row in count_rows if row["school"]}
     rows = school_rows(origins, counts, mixture)
+    for row in rows:
+        row["test_taker_ability"] = (
+            round(scales.test_taker_percentile(row["ability"]), 3)
+            if row["ability"] != "" else ""
+        )
     professional.write_tsv(OUTPUT, rows)
     matched = sum(row["applicants"] for row in origins if row["ability"] != "")
     total = sum(row["applicants"] for row in origins)
