@@ -132,6 +132,7 @@ def feeder_rows(path=FEEDER_SOURCE):
             "applicants": int(applicants.replace(",", "")),
             "school": match["school"] if match else "",
             "ability": match["ability"] if match else "",
+            "bachelors": match["bachelors"] if match else "",
         })
     return rows
 
@@ -194,13 +195,7 @@ def matched_count_rows(school_names):
 
 def applicant_mixture(origins, distributions=None):
     """AAMC applicant-weighted mixture of undergraduate school CDFs."""
-    distributions = distributions or school_distributions.distributions_by_name()
-    components = tuple(
-        (distributions[row["school"]], row["applicants"])
-        for row in origins
-        if row["school"] in distributions
-    )
-    return school_distributions.DistributionMixture(components)
+    return professional.origin_mixture(origins, distributions)
 
 
 def score_row(row, table, mixture, ability_cache=None):

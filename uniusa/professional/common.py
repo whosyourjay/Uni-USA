@@ -4,10 +4,11 @@
 import csv
 import re
 import zipfile
+from math import exp, log
 from collections import defaultdict
 from xml.etree import ElementTree
 
-from uniusa import pathways
+from uniusa import pathways, school_distributions
 from uniusa.paths import ROOT
 
 SOURCES = ROOT / "sources"
@@ -75,15 +76,22 @@ def numeric(value):
         return None
 
 
+def interpolate_points(points, x):
+    """Linear interpolation over (x, y) pairs, flat beyond either end."""
+    points = sorted(points)
+    if x <= points[0][0]:
+        return points[0][1]
+    for (low_x, low_y), (high_x, high_y) in zip(points, points[1:]):
+        if x <= high_x:
+            if high_x == low_x:
+                return high_y
+            return low_y + (x - low_x) * (high_y - low_y) / (high_x - low_x)
+    return points[-1][1]
+
+
 def interpolate(table, score):
     """Linearly interpolate a percentile lookup keyed by integer score."""
-    score = float(score)
-    if score <= min(table):
-        return table[min(table)]
-    if score >= max(table):
-        return table[max(table)]
-    low, high = int(score), int(score) + 1
-    return table[low] + (score - low) * (table[high] - table[low])
+    return interpolate_points(table.items(), float(score))
 
 
 def spread_rounded_percentiles(table):
@@ -107,8 +115,12 @@ def spread_rounded_percentiles(table):
 
 
 def school_candidates(path=None):
-    """Names and undergraduate cohort medians from the canonical school output."""
-    rows = pathways.read_tsv(path or ROOT / "schools.tsv")
+    """Names and undergraduate cohort medians from the canonical school output.
+
+    The same table also lists the law and medical schools scored from these
+    rows, so those are dropped before they can feed their own origins.
+    """
+    rows = pathways.bachelor_rows(pathways.read_tsv(path or ROOT / "schools.tsv"))
     return [
         (row["school"], {
             "school": row["school"],
@@ -130,21 +142,62 @@ def bachelor_origins(path=None):
     ]
 
 
-def weighted_quantile(rows, quantile, value="ability", weight="applicants"):
-    """Observed value at a weighted quantile, ignoring rows without a value."""
-    valid = sorted(
-        (float(row[value]), float(row[weight]))
+MIDDLE_ABILITY = 50.0
+
+
+def application_gradient(rows, floor=1e-5):
+    """How fast the professional-application rate climbs with school ability.
+
+    Sitting a professional entrance test gets steadily more common as the
+    undergraduate school gets stronger.  Where applicant counts are published
+    the climb can be measured, and a pipeline with no feeder table of its own
+    can borrow the slope instead of pretending every graduate applies.
+    """
+    points = [
+        (float(row["ability"]),
+         log(max(row["applicants"] / float(row["bachelors"]), floor)),
+         float(row["bachelors"]))
         for row in rows
-        if row.get(value) not in {None, ""} and float(row.get(weight, 0)) > 0
+        if numeric(row.get("ability")) is not None
+        and numeric(row.get("bachelors")) and row["applicants"] > 0
+    ]
+    total = sum(weight for _, _, weight in points)
+    mean_ability = sum(ability * weight for ability, _, weight in points) / total
+    mean_rate = sum(rate * weight for _, rate, weight in points) / total
+    covariance = sum(
+        weight * (ability - mean_ability) * (rate - mean_rate)
+        for ability, rate, weight in points
     )
-    total = sum(row_weight for _, row_weight in valid)
-    target = min(1.0, max(0.0, quantile)) * total
-    cumulative = 0.0
-    for row_value, row_weight in valid:
-        cumulative += row_weight
-        if cumulative >= target:
-            return row_value
-    return valid[-1][0] if valid else None
+    variance = sum(
+        weight * (ability - mean_ability) ** 2 for ability, _, weight in points
+    )
+    return covariance / variance
+
+
+def applicant_origins(rows, gradient, total=1.0):
+    """Split `total` test takers over schools by graduates and that gradient.
+
+    Only relative weights matter downstream, so `total` defaults to one and the
+    column reads as each school's share of the taker pool.
+    """
+    weighted = [
+        (row, float(row["bachelors"])
+         * exp(gradient * (float(row["ability"]) - MIDDLE_ABILITY)))
+        for row in rows
+    ]
+    scale = total / sum(weight for _, weight in weighted)
+    return [row | {"applicants": weight * scale} for row, weight in weighted]
+
+
+def origin_mixture(origins, distributions=None):
+    """Mixture of undergraduate school CDFs weighted by the applicants each sends."""
+    distributions = distributions or school_distributions.distributions_by_name()
+    components = tuple(
+        (distributions[row["school"]], row["applicants"])
+        for row in origins
+        if row["school"] in distributions
+    )
+    return school_distributions.DistributionMixture(components)
 
 
 def write_tsv(path, rows):

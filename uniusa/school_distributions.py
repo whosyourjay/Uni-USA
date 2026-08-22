@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import cached_property
 from statistics import fmean
 
 from uniusa import ability, calibrate_tests, intake_ability, pathways
@@ -35,11 +36,12 @@ class SchoolDistribution:
         return fmean(year.cdf(percentile) for year in self.years)
 
 
-@dataclass(frozen=True)
+@dataclass
 class DistributionMixture:
     """Weighted mixture of school CDFs with numerical inverse."""
 
     components: tuple
+    steps: int = 200
 
     @property
     def weight(self):
@@ -53,13 +55,26 @@ class DistributionMixture:
             for distribution, weight in self.components
         ) / self.weight
 
-    def quantile(self, probability, steps=24):
-        """Age-18 percentile at a mixture probability, by bisection."""
+    @cached_property
+    def grid(self):
+        """The mixture CDF sampled evenly across the percentile scale."""
+        return tuple(
+            (step * 100 / self.steps, self.cdf(step * 100 / self.steps))
+            for step in range(self.steps + 1)
+        )
+
+    def bracket(self, probability):
+        """The sampled interval holding a mixture probability."""
+        for (low, _), (high, high_cdf) in zip(self.grid, self.grid[1:]):
+            if high_cdf >= probability:
+                return low, high
+        return self.grid[-1][0], 100.0
+
+    def quantile(self, probability, steps=20):
+        """Age-18 percentile at a mixture probability, bisected inside its bracket."""
         if not 0 <= probability <= 1:
             raise ValueError("Quantile probability must lie between zero and one")
-        if probability <= self.cdf(0.0):
-            return 0.0
-        low, high = 0.0, 100.0
+        low, high = self.bracket(probability)
         for _ in range(steps):
             middle = (low + high) / 2
             if self.cdf(middle) < probability:
