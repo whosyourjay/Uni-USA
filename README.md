@@ -1,12 +1,14 @@
 # United States university graduate ability
 
 Ranks U.S. universities and majors by the estimated age-18 academic ability of
-their bachelor's graduates. Nothing here reflects research output or reputation.
+their bachelor's graduates, and ranks law and medical schools against them on
+the same scale. Nothing here reflects research output or reputation.
 
-First pass: 2,356 institutions and 64,314 institution-major pairs, using 2022–23
-degrees, fall 2019 admission-route counts, fall 2014–2023 test-score bars, and
-2023 transfer outcomes. The current score is a rough test-taker percentile proxy;
-converting it to the full age-18 scale is still in progress.
+First pass: 2,356 undergraduate institutions plus 355 professional schools,
+using 2022–23 degrees, fall 2019 admission-route counts, fall 2014–2023
+test-score bars, and 2023 transfer outcomes. The current score is a rough
+test-taker percentile proxy; converting it to the full age-18 scale is still in
+progress.
 
 Known limitations and planned work live in `TODO.md`.
 
@@ -69,19 +71,33 @@ rounds and legacy are overlays, not routes.
 
 ## Outputs
 
-- `schools.tsv` — 2,356 final institutions, ordered by `cohort_median`
-- `majors.tsv` — 85,711 institution-major pairs; major scores currently inherit
-  the institution score
+- `schools.tsv` — 2,356 undergraduate institutions and the 355 law and medical
+  schools scored from them, ordered together by `cohort_median`. `program` says
+  which list a row came from: `Bachelor's`, `JD`, or `MD`
+- `majors.tsv` — institution-major pairs that inherit the institution score.
+  Nothing reads them, so `outputs.py` writes the file only under `--majors`
 - `derived/final_admission_paths.tsv` — the exhaustive national table above
 - `derived/institution_final_routes.tsv` — the same mutually exclusive routes
   at each final institution
+- `derived/origin_model.tsv` — features and predicted score per transfer origin
+- `derived/origin_reporting.tsv` — how score-reporting origins differ from the rest
+- `derived/origin_clock.tsv` — what each completion window costs the fit
 - `derived/transfer_origin_scores.tsv` — origin scores and transfer-out weights
 - `derived/transfer_score.tsv` — pooled transfer score and coverage by origin type
+- `derived/transfer_destination_scores.tsv` — each destination's slice of the
+  stack-ranked transfer pool
 - `derived/route_ability.tsv` — route allocations on the school ability scale
 - `derived/graduate_median_ability.tsv` — each school's graduate-median ability as
   a percentile of the age-18 cohort
 - `law-schools.tsv` — 2024 ABA entering classes scored from LSAT quartiles
 - `medical-schools.tsv` — MD schools scored from median MCAT and 2023 matriculants
+
+Both professional models read an entrance-test median onto the ability
+distribution of the undergraduates who apply, so their score already means what
+`cohort_median` means and ranks against it directly. `outputs.py` writes the
+undergraduate rows first, rebuilds the two professional tables from them, then
+writes the merged list, and the professional models keep only `Bachelor's` rows
+so their own output never feeds their origins.
 
 `bachelors` is the mean annual domestic award count over the completions years
 2014–2023, counting only the years an institution reports. Major rows average
@@ -117,18 +133,32 @@ sits above it and its ratio is unchanged.
 
 Downloaded sources and generated tables stay local and out of Git.
 
-Run `python3 outputs.py --schools-only` to regenerate `schools.tsv`, then
-`python3 professional_outputs.py` to regenerate both professional-school files.
-Run `python3 viz_medical_applicants.py` for the applicant-distribution chart.
+Run `python3 outputs.py` to regenerate `schools.tsv` and, with it, both
+professional-school files. Run `python3 viz_medical_applicants.py` for the
+applicant-distribution chart.
 
 ## Professional schools
 
 Law converts each school's LSAT q25, median, and q75 to exact LSAT-taker
-percentiles, maps each rank onto the bachelor-weighted distribution of
-undergraduate school ability, and averages the three results. This is a
-provisional bridge: ABA supplies the destination counts and LSAT bars, but no
-recent public origin-by-undergraduate-school table. `lsat_share` shows how much
-of the entering class supplied an LSAT; GRE and JD-Next entrants remain unscored.
+percentiles, reads each rank off the ability distribution of LSAT takers, and
+averages the three results. An LSAT percentile ranks a student against the people
+who sat the test, so who those people are sets the answer, and no public table
+names the undergraduate schools law applicants come from. The taker pool is
+estimated instead: AAMC publishes medical applicants per undergraduate school, so
+regressing `log(applicants / bachelors)` on school ability measures how much
+faster strong schools send graduates to a professional entrance exam. The slope
+is 0.0319 per ability point, a 4.9x rate difference between a school at ability
+50 and one at 100. Law weights each school's graduates by that rate, pools their
+ability distributions, and inverts. Only the relative weights matter, so the size
+of the taker population never enters.
+
+Two limits sit on that. The borrowed slope assumes pre-law selection tilts like
+pre-med selection, and AAMC's table is truncated at 50 applicants, so weak
+schools appear only when unusually medicine-heavy — which flattens the fitted
+slope and makes law scores conservative. Within a school there is no selection at
+all: a taker looks like a random graduate, which pulls scores toward the school
+average. `lsat_share` shows how much of the entering class supplied an LSAT; GRE
+and JD-Next entrants remain unscored.
 
 Medicine maps the median MCAT rank onto the AAMC applicant-weighted mixture of
 undergraduate-school ability distributions. Each school CDF reconstructs its
@@ -146,7 +176,7 @@ because AAMC does not publish a free bulk school-level score table.
 
 Fall 2019 SAT or ACT score bars cover 1,224 institutions awarding 1,499,079
 domestic bachelor's degrees. The currently scored route mass—SAT, ACT,
-automatic rank, service academies, and the pooled transfer proxy—is 1,684,016
+automatic rank, service academies, and the dealt transfer slices—is 1,684,016
 bachelor's recipients, 88.75% of the bachelor flow. At least one measured
 component gives a provisional score to 2,308 institutions covering 1,896,350
 degrees; `ability_coverage` prevents a tiny transfer component from being
@@ -154,13 +184,41 @@ mistaken for full coverage.
 
 IPEDS reports 301,856 domestic transfer-outs from the relevant first-time,
 full-time cohorts. Origin schools with a measured freshman score account for
-55.7% of them. Missing origins receive the weighted median for their institution
-type; direct measurement covers only 1.0% of public associate-college transfer-outs.
+62.3% of them; community colleges account for almost none. The rest are
+predicted from enrollment, completion, and admission policy, which every
+institution reports. The fit trains on the 917 four-year origins that do send
+scores and explains 73.8% of the variance between them, with a residual spread
+of 8.6 points.
 
-This is a pooled national transfer estimate. IPEDS transfer-out counts exclude
-students who complete at the origin before transferring and do not identify the
-destination. Destination-specific origin matrices, starting with public state
-systems, will replace the pool as they are added.
+That prediction moves the pool because the four-year schools sending no scores
+are not like the ones that do: the median unscored four-year is open-admission
+and completes 35% of its cohort, against 57% at a scored school. The old
+institution-type median placed their 46,419 transfers among selective schools.
+
+Completion carries most of that fit and means something else at a two-year
+school, which is judged on associate degrees in three years and loses its
+strongest students to transfer before it awards any. Those schools keep the
+ordering the fit gives them and take the level their own scored peers support, a
+3.2-point lift. Rerunning the fit on the outcome-measure window, which is eight
+years for every level, does not close that gap but widens it to 9.7, because the
+same file counts the part-time and returning entrants who make up most of a
+community college. `derived/origin_clock.tsv` holds the comparison.
+
+IPEDS transfer-out counts do not identify the destination, so the model deals
+rather than matches. Each transfer carries their origin school's median, the
+national pool is stacked from strongest to weakest, and destinations draw from
+it in order of their own freshman score, most selective first. A school's
+transfer score is the mean of the slice it draws, so transfer-heavy selective
+schools no longer share a number with open-admission ones. The pool counts
+transfers leaving an origin and the seats count transfers graduating years
+later, so seats are rescaled onto the pool and the deal is a quantile mapping.
+
+One assumption still carries real weight on the destination side. Schools whose
+freshmen send no scores have no measured selectivity and sit below every scored
+school, which sets the slice for 30% of transfer graduates. The same features
+that spread the origin pool can rank those destinations too.
+Destination-specific origin matrices, starting with public state systems, will
+replace the deal as they are added.
 
 ## Method
 
@@ -269,11 +327,11 @@ award means, and `class_rank.tsv` for the parsed Common Data Set C10 tables.
 Each rebuilds itself when a source is newer or when a needed school is missing,
 so no manual invalidation step is required.
 
-To regenerate only `schools.tsv` from the downloaded sources, without rewriting
-either majors table:
+To regenerate `schools.tsv` and both professional tables from the downloaded
+sources, without rewriting either majors table:
 
 ```sh
-python3 outputs.py --schools-only
+python3 outputs.py
 ```
 
 To rebuild every intermediate table and both canonical outputs:
