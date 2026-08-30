@@ -115,6 +115,18 @@ SOURCES = {
         "U5exxEUr8EZi2Q/pub?gid=273576492&single=true&output=csv",
         "ad23e1bb584e85e95702257a26d4b94178f25ca354e1e72206802338d579f35e",
     ),
+    "sat-percentile-math.csv": (
+        "https://docs.google.com/spreadsheets/d/e/"
+        "2PACX-1vRVCIukssgc3z5-8GpH3achzkJhbxD0TID_q8Xa-1oZIsF_NMy-"
+        "U5exxEUr8EZi2Q/pub?gid=246553632&single=true&output=csv",
+        "4f86ac4ceea2df34090e14701383b1e8543d3555d87b5cf5c0b3f33e648330ae",
+    ),
+    "sat-percentile-rw.csv": (
+        "https://docs.google.com/spreadsheets/d/e/"
+        "2PACX-1vRVCIukssgc3z5-8GpH3achzkJhbxD0TID_q8Xa-1oZIsF_NMy-"
+        "U5exxEUr8EZi2Q/pub?gid=1484610465&single=true&output=csv",
+        "822377df4e8d9b5420a86c6e5c71f09ed36b5a6b81a53e5f59303f971dc9fcaf",
+    ),
     "2017-total-group-sat-report.pdf": (
         "https://reports.collegeboard.org/media/pdf/"
         "2017-total-group-sat-suite-assessments-annual-report.pdf",

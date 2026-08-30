@@ -1,24 +1,21 @@
-"""Export SAT section and total percentile tables for shared fitting.
-
-The total table is the 2019 SAT-user table. The locally mirrored section table
-describes a recent three-year SAT-user group, so this is a useful but imperfect
-cross-vintage calibration case.
-"""
+"""Export same-cohort SAT section and total percentile tables for shared fitting."""
 
 import csv
 from collections import defaultdict
 
 from uniusa.calibrate_tests import (
     SAT_ANNUAL_PERCENTILES,
-    SAT_PERCENTILES,
-    SectionPercentileParser,
     rounded_percentile_interval,
 )
-from uniusa.paths import DERIVED
+from uniusa.paths import DERIVED, SOURCES
 
 
-YEAR = "2019-proxy"
+YEAR = "2019"
 COMMON = {"exam": "SAT", "year": YEAR, "pool": "SAT user group"}
+SECTION_PERCENTILES = {
+    "ERW": SOURCES / "sat-percentile-rw.csv",
+    "Math": SOURCES / "sat-percentile-math.csv",
+}
 
 
 def counts_from_labels(labels):
@@ -44,29 +41,28 @@ def counts_from_labels(labels):
     return rows
 
 
-def section_labels():
-    parser = SectionPercentileParser()
-    parser.feed(SAT_PERCENTILES.read_text(encoding="utf-8"))
-    tables = {"ERW": {}, "Math": {}}
-    for row in parser.rows:
-        if len(row) == 5 and row[0].isdigit():
-            score = int(row[0])
-            tables["ERW"][score] = row[2]
-            tables["Math"][score] = row[4]
-    if any(len(table) != 61 for table in tables.values()):
-        raise ValueError("incomplete SAT section percentile table")
-    return tables
-
-
-def total_labels(year="2019"):
-    with SAT_ANNUAL_PERCENTILES.open(encoding="utf-8-sig", newline="") as source:
+def annual_labels(path, year, expected_scores):
+    with path.open(encoding="utf-8-sig", newline="") as source:
         rows = list(csv.DictReader(source))
+    if not rows or year not in rows[0]:
+        raise ValueError(f"{path.name}: missing {year} column")
     score_field = next(iter(rows[0]))
     labels = {int(row[score_field]): row[year].strip() for row in rows
               if row[score_field].strip() and row[year].strip()}
-    if len(labels) != 121:
-        raise ValueError(f"incomplete {year} SAT total percentile table")
+    if len(labels) != expected_scores:
+        raise ValueError(
+            f"{path.name}: expected {expected_scores} scores for {year}, "
+            f"found {len(labels)}")
     return labels
+
+
+def section_labels(year=YEAR):
+    return {subject: annual_labels(path, year, 61)
+            for subject, path in SECTION_PERCENTILES.items()}
+
+
+def total_labels(year=YEAR):
+    return annual_labels(SAT_ANNUAL_PERCENTILES, year, 121)
 
 
 def exported_rows():

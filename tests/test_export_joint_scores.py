@@ -5,6 +5,9 @@ from uniusa import export_joint_scores
 
 
 class JointScoreExportFuzzTest(unittest.TestCase):
+    def test_export_uses_one_sat_cohort(self):
+        self.assertEqual(export_joint_scores.YEAR, "2019")
+
     def test_rounded_percentiles_form_a_distribution(self):
         rng = random.Random(314159)
         for _ in range(40):
