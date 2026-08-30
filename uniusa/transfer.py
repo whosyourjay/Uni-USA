@@ -13,6 +13,8 @@ sit below the schools that do.
 from collections import defaultdict
 from functools import lru_cache
 
+from uniability import weighted_mean as seat_weighted_mean
+
 from uniusa import origin_model, origins, pathways, scores
 
 
@@ -25,8 +27,12 @@ def load_transfer_out():
 
 
 def weighted_mean(rows, field):
-    total = sum(row["transfer_out_domestic"] for row in rows)
-    return sum(row[field] * row["transfer_out_domestic"] for row in rows) / total
+    value = seat_weighted_mean(
+        (row[field], row["transfer_out_domestic"]) for row in rows
+    )
+    if value is None:
+        raise ValueError("cannot take a mean of no transfer students")
+    return value
 
 
 def weighted_median(rows, field):

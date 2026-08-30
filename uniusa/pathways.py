@@ -8,6 +8,9 @@ import zipfile
 from collections import defaultdict
 from difflib import SequenceMatcher
 from functools import lru_cache
+
+from uniability import weighted_median as seat_weighted_median
+
 from uniusa.paths import DERIVED, ROOT, SOURCES
 COMPLETION_YEARS = tuple(range(2014, 2024))
 COMPLETION_SOURCES = {year: f"C{year}_A.zip" for year in COMPLETION_YEARS}
@@ -57,13 +60,10 @@ def bachelor_rows(rows):
 
 def weighted_median(rows, weight, value):
     """Value of the row sitting at the weighted midpoint."""
-    total = sum(weight(row) for row in rows)
-    cumulative = 0
-    for row in sorted(rows, key=value):
-        cumulative += weight(row)
-        if cumulative >= total / 2:
-            return value(row)
-    raise ValueError("Empty weighted median")
+    found = seat_weighted_median((value(row), weight(row)) for row in rows)
+    if found is None:
+        raise ValueError("Empty weighted median")
+    return found
 
 
 def normalize_school(name):

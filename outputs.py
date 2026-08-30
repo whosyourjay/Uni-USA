@@ -6,6 +6,8 @@ import re
 from collections import Counter
 from html.parser import HTMLParser
 
+from uniability import weighted_mean as seat_weighted_mean
+
 import professional_outputs
 from uniusa import (
     ability_pool,
@@ -104,7 +106,7 @@ def weighted_mean(components):
     weight = sum(count for _, count in components)
     if not weight:
         return "", 0
-    return sum(value * count for value, count in components) / weight, weight
+    return seat_weighted_mean(components), weight
 
 
 def scored_components(route, paths, transfer_score):

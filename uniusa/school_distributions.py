@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from functools import cached_property
 from statistics import NormalDist, fmean
 
+from uniability import weighted_median as seat_weighted_median
+
 from uniusa import ability, calibrate_tests, intake_ability, intake_curve, pathways
 from uniusa import test_counts
 
@@ -192,14 +194,10 @@ def estimated_percentile(row, years=test_counts.YEARS, reach=None):
 
 
 def weighted_median(values):
-    values = sorted(values)
-    middle = sum(weight for _, weight in values) / 2
-    running = 0.0
-    for value, weight in values:
-        running += weight
-        if running >= middle:
-            return value
-    return values[-1][0]
+    found = seat_weighted_median(values)
+    if found is None:
+        raise ValueError("cannot take a median of no values")
+    return found
 
 
 def school_spreads(years=test_counts.YEARS):
