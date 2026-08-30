@@ -4,14 +4,17 @@ import csv
 from collections import defaultdict
 
 from uniusa.calibrate_tests import (
+    ACT_PROFILE_YEARS,
     SAT_ANNUAL_PERCENTILES,
+    load_act_score_distributions,
     rounded_percentile_interval,
 )
 from uniusa.paths import DERIVED, SOURCES
 
 
-YEAR = "2019"
-COMMON = {"exam": "SAT", "year": YEAR, "pool": "SAT user group"}
+SAT_YEARS = tuple(str(year) for year in range(2016, 2026))
+ACT_YEARS = tuple(str(year) for year in ACT_PROFILE_YEARS)
+ACT_SECTIONS = ("English", "Math", "Reading", "Science")
 SECTION_PERCENTILES = {
     "ERW": SOURCES / "sat-percentile-rw.csv",
     "Math": SOURCES / "sat-percentile-math.csv",
@@ -30,6 +33,9 @@ def counts_from_labels(labels):
         width = (upper - lower) / len(scores)
         for index, score in enumerate(scores):
             uppers[score] = lower + (index + 1) * width
+    # The maximum possible score contains every remaining candidate even when
+    # the publisher prints its inclusive percentile as a rounded ``99``.
+    uppers[max(uppers)] = 100.0
     rows, previous = [], 0.0
     for score, upper in sorted(uppers.items()):
         if upper < previous:
@@ -56,32 +62,65 @@ def annual_labels(path, year, expected_scores):
     return labels
 
 
-def section_labels(year=YEAR):
+def section_labels(year):
     return {subject: annual_labels(path, year, 61)
             for subject, path in SECTION_PERCENTILES.items()}
 
 
-def total_labels(year=YEAR):
+def total_labels(year):
     return annual_labels(SAT_ANNUAL_PERCENTILES, year, 121)
 
 
-def exported_rows():
+def sat_rows(year):
+    common = {"exam": "SAT", "year": year, "pool": "SAT user group"}
     subject_rows = []
-    for subject, labels in section_labels().items():
+    for subject, labels in section_labels(year).items():
         subject_rows.extend(
-            {**COMMON, "subject": subject, "score": score, "count": count}
+            {**common, "subject": subject, "score": score, "count": count}
             for score, count in counts_from_labels(labels)
         )
     formula_rows = [
-        {**COMMON, "formula": "ERW+Math", "subject": subject,
-         "weight": 1, "candidates": 100}
+        {**common, "formula": "ERW+Math", "subject": subject,
+         "weight": 1, "candidates": 100, "round_to": ""}
         for subject in ("ERW", "Math")
     ]
     total_rows = [
-        {**COMMON, "formula": "ERW+Math", "total_score": score, "count": count}
-        for score, count in counts_from_labels(total_labels())
+        {**common, "formula": "ERW+Math", "total_score": score, "count": count}
+        for score, count in counts_from_labels(total_labels(year))
     ]
     return subject_rows, formula_rows, total_rows
+
+
+def act_rows(year):
+    common = {"exam": "ACT", "year": year, "pool": "tested graduates"}
+    distributions = load_act_score_distributions(int(year))
+    candidates = sum(distributions["Composite"].values())
+    subject_rows = [
+        {**common, "subject": subject, "score": score, "count": count}
+        for subject in ACT_SECTIONS
+        for score, count in sorted(distributions[subject].items())
+    ]
+    formula_rows = [
+        {**common, "formula": "Composite", "subject": subject,
+         "weight": 0.25, "candidates": candidates, "round_to": 1}
+        for subject in ACT_SECTIONS
+    ]
+    total_rows = [
+        {**common, "formula": "Composite", "total_score": score, "count": count}
+        for score, count in sorted(distributions["Composite"].items())
+    ]
+    return subject_rows, formula_rows, total_rows
+
+
+def exported_rows(sat_years=SAT_YEARS, act_years=ACT_YEARS):
+    tables = ([], [], [])
+    for year in sat_years:
+        for output, rows in zip(tables, sat_rows(str(year))):
+            output.extend(rows)
+    for year in act_years:
+        for output, rows in zip(tables, act_rows(str(year))):
+            output.extend(rows)
+    return tables
 
 
 def write(path, rows):

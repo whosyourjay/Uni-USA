@@ -5,8 +5,11 @@ from uniusa import export_joint_scores
 
 
 class JointScoreExportFuzzTest(unittest.TestCase):
-    def test_export_uses_one_sat_cohort(self):
-        self.assertEqual(export_joint_scores.YEAR, "2019")
+    def test_export_uses_matched_annual_cohorts(self):
+        self.assertIn("2019", export_joint_scores.SAT_YEARS)
+        self.assertIn("2018", export_joint_scores.ACT_YEARS)
+        self.assertEqual(export_joint_scores.ACT_SECTIONS,
+                         ("English", "Math", "Reading", "Science"))
 
     def test_rounded_percentiles_form_a_distribution(self):
         rng = random.Random(314159)

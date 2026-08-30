@@ -177,12 +177,14 @@ def act_profile_text(path):
 
 
 @lru_cache(maxsize=None)
-def load_act_composite_percentiles(year=ACT_PROFILE_DEFAULT_YEAR):
-    """Return exact score frequencies and CDFs among ACT-tested graduates."""
+def load_act_score_distributions(year=ACT_PROFILE_DEFAULT_YEAR):
+    """Return same-cohort ACT section and Composite score frequencies."""
     text = act_profile_text(act_profile_path(year))
     start = text.index("Table 2.1. ACT Score Distributions")
     end = text.index("Avg (SD)", start)
-    counts = {}
+    columns = {"English": 1, "Math": 3, "Reading": 5, "Science": 7,
+               "Composite": 9}
+    distributions = {subject: {} for subject in columns}
     for line in text[start:end].splitlines():
         values = re.findall(r"(?<![.\d])\d[\d,]*(?![.\d])", line)
         if len(values) < 11:
@@ -190,14 +192,25 @@ def load_act_composite_percentiles(year=ACT_PROFILE_DEFAULT_YEAR):
         score = int(values[0].replace(",", ""))
         if not 1 <= score <= 36:
             continue
-        # score; then N/CP pairs for English, Math, Reading, Science,
-        # Composite, STEM, and ELA. Composite N is numeric field 9.
-        counts[score] = int(values[9].replace(",", ""))
-    if set(counts) != set(range(1, 37)):
-        raise ValueError("Incomplete ACT composite frequency table")
-    total = sum(counts.values())
+        for subject, column in columns.items():
+            distributions[subject][score] = int(values[column].replace(",", ""))
+    for subject, counts in distributions.items():
+        if set(counts) != set(range(1, 37)):
+            raise ValueError(f"Incomplete ACT {subject} frequency table for {year}")
+    totals = {sum(counts.values()) for counts in distributions.values()}
+    if max(totals) - min(totals) > max(totals) * 0.005:
+        raise ValueError(f"ACT {year} section populations do not match: {totals}")
+    total = sum(distributions["Composite"].values())
     if not 500_000 < total < 3_000_000:
         raise ValueError(f"Implausible ACT profile total for {year}: {total:,}")
+    return distributions
+
+
+@lru_cache(maxsize=None)
+def load_act_composite_percentiles(year=ACT_PROFILE_DEFAULT_YEAR):
+    """Return exact score frequencies and CDFs among ACT-tested graduates."""
+    counts = load_act_score_distributions(year)["Composite"]
+    total = sum(counts.values())
     running = 0
     percentiles = {}
     for score in sorted(counts):
