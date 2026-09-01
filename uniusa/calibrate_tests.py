@@ -26,6 +26,7 @@ import re
 import subprocess
 
 import fetch_sources
+from uniability import nearest_year
 from uniusa import ability, pathways
 
 
@@ -147,12 +148,8 @@ def load_sat_total_user_percentiles(year=2019, path=SAT_ANNUAL_PERCENTILES):
 
 
 def nearest_act_year(year):
-    """Closest pinned ACT profile year, breaking ties toward the earlier one.
-
-    ACT never posted a 2019 profile report, and no report exists before 2018,
-    so admission years outside the pinned set borrow their nearest neighbour.
-    """
-    return min(ACT_PROFILE_YEARS, key=lambda pinned: (abs(pinned - year), pinned))
+    """Closest pinned ACT profile year."""
+    return nearest_year(ACT_PROFILE_YEARS, year)
 
 
 def act_profile_path(year=ACT_PROFILE_DEFAULT_YEAR):
