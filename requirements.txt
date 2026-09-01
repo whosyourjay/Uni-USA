@@ -1,1 +1,1 @@
-uniability @ git+https://github.com/whosyourjay/Uni-Compare.git@80806d9
+uniability @ git+https://github.com/whosyourjay/Uni-Compare.git@8ff0fd7
