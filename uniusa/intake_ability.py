@@ -295,7 +295,7 @@ def main():
     for row in (row for row in rows if not row["status"]):
         if row["bachelors"] < 200:
             continue
-        print(f"{(row['school'] or row['unitid'])[:44]:<44} {row['bachelors']:>7.0f} "
+        print(f"{str(row['school'] or row['unitid'])[:44]:<44} {row['bachelors']:>7.0f} "
               f"{row['submitters']:>7.0f} {row['median_percentile']:>8.2f}")
 
 

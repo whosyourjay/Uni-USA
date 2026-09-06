@@ -13,7 +13,7 @@ sit below the schools that do.
 from collections import defaultdict
 from functools import lru_cache
 
-from uniability import weighted_mean as seat_weighted_mean
+from uniability import partition_capacity, weighted_mean as seat_weighted_mean
 
 from uniusa import origin_model, origins, pathways, scores
 
@@ -149,26 +149,16 @@ def deal_pool(pool, seats, epsilon=1e-9):
     """
     total_seats = sum(seats)
     scale = sum(weight for _, weight in pool) / total_seats if total_seats else 0
-    index, remaining = 0, pool[0][1]
-    for demand in seats:
-        wanted, taken, carried, edges = demand * scale, 0.0, 0.0, []
-        distribution = []
-        while wanted - taken > epsilon and index < len(pool):
-            score, _ = pool[index]
-            amount = min(wanted - taken, remaining)
-            edges = [edges[0] if edges else score, score]
-            carried += score * amount
-            distribution.append((score, amount))
-            taken += amount
-            remaining -= amount
-            if remaining <= epsilon:
-                index += 1
-                remaining = pool[index][1] if index < len(pool) else 0.0
+    for pieces in partition_capacity(pool, (n * scale for n in seats),
+                                     lambda item: item[1], epsilon):
+        distribution = tuple((item[0], count) for item, count in pieces)
+        taken = sum(count for _, count in distribution)
+        carried = sum(score * count for score, count in distribution)
         yield {
             "transfer_score": round(carried / taken, 3) if taken else "",
-            "pool_top": edges[0] if edges else "",
-            "pool_bottom": edges[1] if edges else "",
-            "distribution": tuple(distribution),
+            "pool_top": distribution[0][0] if distribution else "",
+            "pool_bottom": distribution[-1][0] if distribution else "",
+            "distribution": distribution,
         }
 
 
