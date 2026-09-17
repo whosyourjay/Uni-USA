@@ -3,6 +3,8 @@
 
 import csv
 
+from uniability.tsv import write_rows
+
 from uniusa.paths import DERIVED, ROOT
 
 SCHOOLS = ROOT / "schools.tsv"
@@ -50,11 +52,7 @@ def rows(schools=SCHOOLS, routes=ROUTES):
 
 def main():
     found = list(rows())
-    TARGET.parent.mkdir(parents=True, exist_ok=True)
-    with TARGET.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, FIELDS, delimiter="\t", lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(found)
+    write_rows(TARGET, found, FIELDS)
     print(f"wrote {len(found):,} route allocations to {TARGET}")
 
 

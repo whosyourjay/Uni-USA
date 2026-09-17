@@ -10,6 +10,7 @@ from difflib import SequenceMatcher
 from functools import lru_cache
 
 from uniability import weighted_median as seat_weighted_median
+from uniability.tsv import write_rows as write_tsv
 
 from uniusa.paths import DERIVED, ROOT, SOURCES
 COMPLETION_YEARS = tuple(range(2014, 2024))
@@ -401,16 +402,6 @@ def level_rows(rows):
             "om_transfer_share_bachelors": transfer / (direct + transfer) if direct + transfer else "",
         })
     return output
-
-
-def write_tsv(path, rows):
-    rows = list(rows)
-    path.parent.mkdir(exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as output:
-        writer = csv.DictWriter(output, fieldnames=list(rows[0]), delimiter="\t",
-                                lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def main():

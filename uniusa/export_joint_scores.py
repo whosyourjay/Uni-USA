@@ -3,6 +3,8 @@
 import csv
 from collections import defaultdict
 
+from uniability.tsv import write_rows as write
+
 from uniusa.calibrate_tests import (
     ACT_PROFILE_YEARS,
     SAT_ANNUAL_PERCENTILES,
@@ -121,14 +123,6 @@ def exported_rows(sat_years=SAT_YEARS, act_years=ACT_YEARS):
         for output, rows in zip(tables, act_rows(str(year))):
             output.extend(rows)
     return tables
-
-
-def write(path, rows):
-    with path.open("w", encoding="utf-8", newline="") as target:
-        writer = csv.DictWriter(target, list(rows[0]), delimiter="\t",
-                                lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def main():

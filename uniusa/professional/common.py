@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Shared parsers and scale conversions for professional-school outputs."""
 
-import csv
+from functools import partial
 import re
 import zipfile
 from math import exp, log
 from collections import defaultdict
 from xml.etree import ElementTree
+
+from uniability.tsv import write_rows
 
 from uniusa import pathways, school_distributions
 from uniusa.paths import ROOT
@@ -199,11 +201,4 @@ def origin_mixture(origins, distributions=None):
     return school_distributions.DistributionMixture(components)
 
 
-def write_tsv(path, rows):
-    rows = list(rows)
-    if not rows:
-        raise ValueError(f"No rows to write to {path}")
-    with path.open("w", encoding="utf-8", newline="") as target:
-        writer = csv.DictWriter(target, fieldnames=rows[0], delimiter="\t")
-        writer.writeheader()
-        writer.writerows(rows)
+write_tsv = partial(write_rows, lineterminator="\r\n")
