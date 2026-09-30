@@ -2,71 +2,17 @@
 """Shared parsers and scale conversions for professional-school outputs."""
 
 from functools import partial
-import re
-import zipfile
 from math import exp, isnan, log
 from collections import defaultdict
-from xml.etree import ElementTree
 
 from uniability import Curve
 from uniability.tsv import write_rows
+from uniability.xlsx import rows as xlsx_rows
 
 from uniusa import pathways, school_distributions
 from uniusa.paths import ROOT
 
 SOURCES = ROOT / "sources"
-
-XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-
-
-def xlsx_column(reference):
-    """Zero-based column number from an A1-style cell reference."""
-    letters = re.match(r"[A-Z]+", reference).group()
-    value = 0
-    for letter in letters:
-        value = value * 26 + ord(letter) - ord("A") + 1
-    return value - 1
-
-
-def shared_strings(archive):
-    """The shared-string table in an XLSX archive, including rich text."""
-    try:
-        root = ElementTree.fromstring(archive.read("xl/sharedStrings.xml"))
-    except KeyError:
-        return []
-    return [
-        "".join(node.text or "" for node in item.iter(XLSX_NS + "t"))
-        for item in root.findall(XLSX_NS + "si")
-    ]
-
-
-def cell_value(cell, strings):
-    kind = cell.get("t")
-    value = cell.find(XLSX_NS + "v")
-    if kind == "inlineStr":
-        return "".join(node.text or "" for node in cell.iter(XLSX_NS + "t"))
-    if value is None or value.text is None:
-        return ""
-    if kind == "s":
-        return strings[int(value.text)]
-    return value.text
-
-
-def xlsx_rows(path, sheet="xl/worksheets/sheet1.xml"):
-    """Yield rows from a simple XLSX worksheet using only the standard library."""
-    with zipfile.ZipFile(path) as archive:
-        strings = shared_strings(archive)
-        root = ElementTree.fromstring(archive.read(sheet))
-    for xml_row in root.iter(XLSX_NS + "row"):
-        cells = {
-            xlsx_column(cell.get("r")): cell_value(cell, strings)
-            for cell in xml_row.findall(XLSX_NS + "c")
-        }
-        if not cells:
-            yield []
-            continue
-        yield [cells.get(index, "") for index in range(max(cells) + 1)]
-
 
 def numeric(value):
     """Float from a spreadsheet field, or None for suppressed/missing values."""
