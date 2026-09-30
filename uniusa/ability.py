@@ -370,19 +370,25 @@ def interval_cdf(value, lower, upper):
     return (value - lower) / (upper - lower)
 
 
+def interquartile_intervals(scale_min, q25, q75, scale_max):
+    """Three uniform intervals holding the lower quarter, middle half and upper quarter."""
+    anchors = (scale_min, q25, q75, scale_max)
+    if any(left > right for left, right in zip(anchors, anchors[1:])):
+        raise ValueError(f"Non-monotone score anchors: {anchors}")
+    masses = (0.25, 0.50, 0.25)
+    return tuple((left, right, mass)
+                 for mass, (left, right) in zip(masses, zip(anchors, anchors[1:])))
+
+
 def interquartile_cdf(value, scale_min, q25, q75, scale_max):
     """A bounded distribution matching the two 2019 IPEDS quartiles.
 
     The lower tail, middle half, and upper tail are uniform within their
     intervals. This avoids inventing a normal tail or an unpublished median.
     """
-    anchors = (scale_min, q25, q75, scale_max)
-    if any(left > right for left, right in zip(anchors, anchors[1:])):
-        raise ValueError(f"Non-monotone score anchors: {anchors}")
-    masses = (0.25, 0.50, 0.25)
     return sum(
         mass * interval_cdf(value, left, right)
-        for mass, (left, right) in zip(masses, zip(anchors, anchors[1:]))
+        for left, right, mass in interquartile_intervals(scale_min, q25, q75, scale_max)
     )
 
 

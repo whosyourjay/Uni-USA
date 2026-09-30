@@ -27,7 +27,7 @@ import re
 import subprocess
 
 import fetch_sources
-from uniability import Curve, nearest_year
+from uniability import Curve, nearest_year, uniform_quantile
 from uniusa import ability, pathways
 
 
@@ -343,32 +343,18 @@ def route_percentile_rows(component_rows, sat_total_table=None):
 
 def mixture_median(rows):
     """Median of submitter-weighted reconstructed score distributions."""
-    total = sum(row["submitters_2019"] for row in rows)
-    if total <= 0:
+    intervals = [
+        (lower, upper, mass * row["submitters_2019"])
+        for row in rows
+        for lower, upper, mass in ability.interquartile_intervals(
+            row["score_scale_min"], row["score_q25_2019"],
+            row["score_q75_2019"], row["score_scale_max"],
+        )
+    ]
+    median = uniform_quantile(intervals)
+    if median is None:
         raise ValueError("Score mixture has no submitters")
-
-    def cdf(value):
-        return sum(
-            row["submitters_2019"]
-            * ability.interquartile_cdf(
-                value,
-                row["score_scale_min"],
-                row["score_q25_2019"],
-                row["score_q75_2019"],
-                row["score_scale_max"],
-            )
-            for row in rows
-        ) / total
-
-    lower = min(row["score_scale_min"] for row in rows)
-    upper = max(row["score_scale_max"] for row in rows)
-    for _ in range(80):
-        midpoint = (lower + upper) / 2
-        if cdf(midpoint) < 0.5:
-            lower = midpoint
-        else:
-            upper = midpoint
-    return (lower + upper) / 2
+    return float(median)
 
 
 def national_route_percentile_rows(
