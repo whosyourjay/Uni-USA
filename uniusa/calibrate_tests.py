@@ -113,7 +113,7 @@ def load_sat_user_percentiles(path=SAT_PERCENTILES):
 
 def rounded_percentile_interval(label):
     """Return the latent interval represented by a published percentile."""
-    label = label.strip()
+    label = label.strip().replace("\u00ad", "-")
     if label == "99+":
         return 99.5, 100.0
     if label == "1-":
@@ -132,7 +132,10 @@ def load_sat_total_user_percentiles(year=2019, path=SAT_ANNUAL_PERCENTILES):
         for row in rows
         if row[score_field].strip() and row[str(year)].strip()
     }
-    if set(labels) != set(range(400, 1601, 10)):
+    # The pre-redesign CR+Math tables omit the absolute minimum, 400. Do not
+    # invent a percentile for it; interpolation retains the observed support.
+    minimum = 410 if year < 2016 else 400
+    if set(labels) != set(range(minimum, 1601, 10)):
         raise ValueError(f"Incomplete {year} SAT total percentile table")
 
     grouped = defaultdict(list)

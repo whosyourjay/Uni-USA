@@ -266,6 +266,11 @@ NYU_MEDICAL_HISTORY = {
 }
 SOURCES.update({f"nyu-medicine-{year}.html": source
                 for year, source in NYU_MEDICAL_HISTORY.items()})
+SOURCES["nyu-medicine-2006-2014.xlsx"] = (
+    "https://journals.plos.org/plosone/article/file?"
+    "id=10.1371/journal.pone.0227108.s003&type=supplementary",
+    "065b98e4cb05a96441dc31eb1ae7d5500f38ce0a2e46ad0d51f3b8a3b769ba4c",
+)
 
 
 def digest(path):
