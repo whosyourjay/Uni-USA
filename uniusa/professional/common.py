@@ -4,10 +4,11 @@
 from functools import partial
 import re
 import zipfile
-from math import exp, log
+from math import exp, isnan, log
 from collections import defaultdict
 from xml.etree import ElementTree
 
+from uniability import Curve
 from uniability.tsv import write_rows
 
 from uniusa import pathways, school_distributions
@@ -80,15 +81,10 @@ def numeric(value):
 
 def interpolate_points(points, x):
     """Linear interpolation over (x, y) pairs, flat beyond either end."""
-    points = sorted(points)
-    if x <= points[0][0]:
-        return points[0][1]
-    for (low_x, low_y), (high_x, high_y) in zip(points, points[1:]):
-        if x <= high_x:
-            if high_x == low_x:
-                return high_y
-            return low_y + (x - low_x) * (high_y - low_y) / (high_x - low_x)
-    return points[-1][1]
+    curve = Curve(points)
+    if not curve or isnan(x):
+        raise ValueError("interpolation needs a score and a nonempty table")
+    return curve.rank(x)
 
 
 def interpolate(table, score):

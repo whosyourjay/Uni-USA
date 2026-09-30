@@ -21,12 +21,13 @@ from collections import defaultdict
 from functools import lru_cache
 import csv
 from html.parser import HTMLParser
+from math import isnan
 from pathlib import Path
 import re
 import subprocess
 
 import fetch_sources
-from uniability import nearest_year
+from uniability import Curve, nearest_year
 from uniusa import ability, pathways
 
 
@@ -218,17 +219,9 @@ def load_act_composite_percentiles(year=ACT_PROFILE_DEFAULT_YEAR):
 
 def interpolate(table, value):
     """Linearly interpolate a monotone score-to-percentile lookup."""
-    scores = sorted(table)
-    if value <= scores[0]:
-        return table[scores[0]]
-    if value >= scores[-1]:
-        return table[scores[-1]]
-    lower = max(score for score in scores if score <= value)
-    upper = min(score for score in scores if score >= value)
-    if lower == upper:
-        return table[lower]
-    fraction = (value - lower) / (upper - lower)
-    return table[lower] + fraction * (table[upper] - table[lower])
+    if not table or isnan(value):
+        raise ValueError("interpolation needs a score and a nonempty table")
+    return Curve(table.items()).rank(value)
 
 
 def admission_route_centers(
