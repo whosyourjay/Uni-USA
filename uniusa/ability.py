@@ -64,9 +64,11 @@ def present(row, fields):
 
 @lru_cache(maxsize=None)
 def load_admissions(year=ADMISSION_YEAR):
+    # Before 2014, IPEDS included admissions in Institutional Characteristics.
+    component = "IC" if year < 2014 else "ADM"
     return {
         pathways.number(row["UNITID"]): row
-        for row in pathways.zip_rows(f"ADM{year}.zip")
+        for row in pathways.zip_rows(f"{component}{year}.zip")
     }
 
 

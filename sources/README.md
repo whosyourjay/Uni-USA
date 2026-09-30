@@ -6,6 +6,7 @@ These are the fixed source tables used by the analysis. The files are downloaded
 |---|---|---|---|
 | `nc-est2023-agesex-res.csv` | U.S. Census Bureau | July 1, 2023 resident population by single year of age and sex | <https://www2.census.gov/programs-surveys/popest/datasets/2020-2023/national/asrh/nc-est2023-agesex-res.csv> |
 | `HD2023.zip` | NCES IPEDS | Fall 2023 institutional directory | <https://nces.ed.gov/ipeds/datacenter/data/HD2023.zip> |
+| `IC2009.zip`–`IC2013.zip` | NCES IPEDS | Historical admissions quartiles and entrant counts; admissions were part of Institutional Characteristics before 2014 | <https://nces.ed.gov/ipeds/datacenter/data/IC2009.zip> |
 | `ADM2019.zip` | NCES IPEDS | Fall 2019 first-year admissions, test policy, and submitted-test summaries | <https://nces.ed.gov/ipeds/datacenter/data/ADM2019.zip> |
 | `ADM2019_Dict.zip` | NCES IPEDS | Definitions and code values for 2019 admissions considerations | <https://nces.ed.gov/ipeds/datacenter/data/ADM2019_Dict.zip> |
 | `ADM2014.zip`–`ADM2018.zip`, `ADM2020.zip`–`ADM2023.zip` | NCES IPEDS | Additional annual SAT/ACT score quartiles averaged into school ability estimates | <https://nces.ed.gov/ipeds/datacenter/data/ADM2014.zip> |
@@ -34,6 +35,7 @@ These are the fixed source tables used by the analysis. The files are downloaded
 | `aamc-medical-feeders-2023.txt` | Association of American Medical Colleges | Table A-2 undergraduate institutions supplying at least 50 MD applicants, 2023–24 | <https://www.aamc.org/media/35691/download?attachment=> |
 | `aamc-medical-matriculants-2023.txt` | Association of American Medical Colleges | Table A-1 MD matriculants by medical school, 2023–24 | <https://www.aamc.org/media/35686/download?attachment=> |
 | `medical-school-mcat.html` | Inspira Advantage, transcribed from AAMC MSAR | School-level median MCAT scores | <https://www.inspiraadvantage.com/blog/gpa-and-mcat-scores-for-all-medical-schools> |
+| `nyu-medicine-2021.html`–`nyu-medicine-2023.html`, `nyu-medicine-2025.html`, `nyu-medicine-2026.html` | NYU Langone / NYU Grossman | Entering-class counts and median MCAT scores; row-level URLs and PDF transcriptions in [history/nyu-grossman.tsv](../history/nyu-grossman.tsv) | [Source and year conventions](../history/README.md) |
 
 Run `python3 fetch_sources.py` to verify or restore the local copies. The downloader pins the SHA-256 digest of every input. `calibrate_tests.py` uses `pdftotext -layout` to parse the ACT table.
 Run `python3 class_rank.py --fetch` separately to collect and parse the fixed 20-school class-rank sample.

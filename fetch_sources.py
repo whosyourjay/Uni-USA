@@ -147,6 +147,17 @@ SOURCES = {
         "f4963a49fbb1b34b9e3eb2549ca59c36f69fbf676031edbc2c3fb95512d8223d",
     ),
 }
+HISTORICAL_ADMISSION_DIGESTS = {
+    2009: "7cbb1d367fe0f396264aa50889c6ba315f9c13d54f97fc70250e83ea2e98ef20",
+    2010: "b3e84fb519c07a529cb56db421e932c0269a7839b215707dba7ccbae85afcabe",
+    2011: "c48cdeb0f4480b3ff492b37034ecd525478a9de26166f5c39deadf815937a9bb",
+    2012: "e9f3f23675b10188c16ce59c1a5e1c17d5833c3bd5b154dd3ceabb19154b3d02",
+    2013: "0d58855b26f9c731b53be839adb971346bf65a205a1f13f24bf5a8c90e636583",
+}
+SOURCES.update({
+    f"IC{year}.zip": (f"https://nces.ed.gov/ipeds/datacenter/data/IC{year}.zip", digest)
+    for year, digest in HISTORICAL_ADMISSION_DIGESTS.items()
+})
 COMPLETION_DIGESTS = {
     2014: "7e04c402ce870a9073e99aafc13eae1ae07d9d97eecf36689d9c42db1996d4c8",
     2015: "c1d54e7b5896ca3db2a5fadca00c149f76f2d2189e57749e8f4db716a266b489",
@@ -229,6 +240,32 @@ SOURCES.update({
         "bfccb1f1f1f3d3049baa34a1a9c895893f4faa27b915db6793add4de27bc8162",
     ),
 })
+
+
+NYU_MEDICAL_HISTORY = {
+    2021: (
+        "https://nyulangone.org/news/nyu-grossman-school-medicine-welcomes-class-2025-during-annual-white-coat-ceremony",
+        "fa44f75d1e98fba4564e86f35eac9a6fb96bd7fef6336ba985d35f83658802c0",
+    ),
+    2022: (
+        "https://nyulangone.org/news/nyu-grossman-school-medicine-welcomes-class-2026-white-coat-ceremony",
+        "49e3868eaf84769e7f9a1935c80a4b1a6904f7442d90ba445e56359c41ae2989",
+    ),
+    2023: (
+        "https://nyulangone.org/news/nyu-grossman-school-medicine-welcomes-102-first-year-students",
+        "951a44d6dc763c8c7c4b1a5d7484a3cd885d590f8c7dfa05a5edcaa402c4b421",
+    ),
+    2025: (
+        "https://nyulangone.org/news/nyu-grossman-school-medicine-welcomes-class-2028-annual-white-coat-ceremony",
+        "d9eea22ede767ae05db7bef58c1f91b8c9cd8e858a8755d01b49ff1c5654235b",
+    ),
+    2026: (
+        "https://med.nyu.edu/",
+        "2975d4d948e505bd7a41d5d9558445c7a5ceefa5297f410cb87e49d65d7c15db",
+    ),
+}
+SOURCES.update({f"nyu-medicine-{year}.html": source
+                for year, source in NYU_MEDICAL_HISTORY.items()})
 
 
 def digest(path):
