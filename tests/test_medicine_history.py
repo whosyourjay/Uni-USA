@@ -26,7 +26,7 @@ class MedicineHistoryTest(TestCase):
         admission = {"ENRLT": "100", "ACTNUM": "100", "ACTCM25": "20", "ACTCM75": "30"}
         with patch.object(history.calibrate_tests, "load_sat_total_user_percentiles", return_value={}), \
                 patch.object(history.calibrate_tests, "load_act_composite_percentiles",
-                             return_value=({}, {20: 60, 30: 90})), \
+                             return_value=({1: 60, 20: 30, 30: 10}, {1: 60, 20: 90, 30: 100})), \
                 patch.object(history.pathways, "load_directory", return_value={1: {"INSTNM": "A"}}), \
                 patch.object(history.ability, "load_admissions", return_value={1: admission}) as load:
             distribution = history.freshman_distributions(2009)["A"]
@@ -34,6 +34,34 @@ class MedicineHistoryTest(TestCase):
         self.assertEqual(distribution.median, 75)
         self.assertAlmostEqual(distribution.cdf(75), 0.5)
         self.assertGreater(distribution.spread, 0)
+
+    def test_perfect_act_quartile_keeps_tied_students_in_the_upper_tail(self):
+        counts = {20: 980, 34: 15, 36: 5}
+        admission = {"ENRLT": "100", "ACTNUM": "100", "ACTCM25": "34", "ACTCM75": "36"}
+        with patch.object(history.calibrate_tests, "load_sat_total_user_percentiles", return_value={}), \
+                patch.object(history.calibrate_tests, "load_act_composite_percentiles",
+                             return_value=(counts, {20: 98, 34: 99.5, 36: 100})), \
+                patch.object(history.pathways, "load_directory", return_value={1: {"INSTNM": "A"}}), \
+                patch.object(history.ability, "load_admissions", return_value={1: admission}):
+            distribution = history.freshman_distributions(2022)["A"]
+            # Neither the upper quartile nor its spread depends on an epsilon
+            # chosen merely to make inverse-normal(100%) finite.
+            with patch.object(history.school_distributions, "MIN_PERCENTILE", 1e-12):
+                smaller_epsilon = history.freshman_distributions(2022)["A"]
+        normal = history.school_distributions.NORMAL
+        self.assertAlmostEqual(distribution.median, (98 + 99.5) / 2)
+        self.assertAlmostEqual(distribution.spread,
+                               (normal.inv_cdf(.995) - normal.inv_cdf(.98)) / history.IQR_Z)
+        self.assertEqual(distribution, smaller_epsilon)
+        self.assertLess(distribution.spread, 0.5)
+
+    def test_real_perfect_score_cutoff_matches_original_medical_model(self):
+        counts, score_cdf = calibrate_tests.load_act_composite_percentiles()
+        self.assertEqual(score_cdf[36], 100)
+        tail = history.intake_ability.act_share_above(36, counts)
+        self.assertAlmostEqual(tail, counts[36] / sum(counts.values()))
+        self.assertGreater(tail, 0.001)
+        self.assertLess(100 * (1 - tail), 99.9)
 
     def test_four_year_lag_and_common_panel_prevent_missing_school_mix_changes(self):
         origins = [{"school": name, "applicants": count} for name, count in (("A", 60), ("B", 40))]

@@ -9,7 +9,7 @@ composition of the calibration population.
 from statistics import median
 
 from uniability.xlsx import rows as xlsx_rows
-from uniusa import ability, calibrate_tests, pathways, school_distributions
+from uniusa import ability, calibrate_tests, intake_ability, pathways, school_distributions
 from uniusa.intake_curve import IQR_Z
 from uniusa.professional import common, medicine
 
@@ -54,10 +54,17 @@ def freshman_distributions(year):
     Centers follow the existing mean-of-quartiles / median-of-routes rule.
     Normal-in-z spreads use that year's reported interquartile ranges. SAT
     tables are annual (CR + Math before 2016); the ACT reference stays fixed at
-    2018, as in the undergraduate history. No current school median is reused.
+    2018. ACT cutoffs retain everyone tied at the bar, as in the original
+    medical model. No current school median is reused.
     """
     sat = calibrate_tests.load_sat_total_user_percentiles(year)
-    _, act = calibrate_tests.load_act_composite_percentiles()
+    act_counts, _ = calibrate_tests.load_act_composite_percentiles()
+    # These are cutoff locations, not upper-inclusive score-report CDFs.
+    # In particular, ACT 36 still has a nonzero population at the bar. Using
+    # P(score <= 36) = 1 here would fit a normal tail to an artificial near-
+    # infinite z value and grossly inflate the inferred medical-school rank.
+    act = {score: 100 * (1 - intake_ability.act_share_above(score, act_counts))
+           for score in act_counts}
     directory = pathways.load_directory()
     normal = school_distributions.NORMAL
     epsilon = school_distributions.MIN_PERCENTILE

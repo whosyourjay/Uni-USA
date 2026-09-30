@@ -44,7 +44,12 @@ python publish.py --page overview
 from freshman score centers and interquartile spreads. Centers use the existing
 mean-of-quartiles / median-of-SAT-and-ACT rule; spreads weight the observed routes
 by submitter counts. SAT uses annual CR+Math / ERW+Math tables; ACT retains the
-undergraduate history's fixed 2018 reference. It does **not** reuse current
+fixed 2018 reference. ACT quartile cutoffs use the original medical model's
+inclusive upper-tail counts: students tied at the cutoff remain in the tail.
+Thus ACT 36 starts at percentile 99.8046, not 100; it must not become a
+near-infinite normal-score anchor. Regression tests cover this ceiling and
+verify that changing the numerical clipping epsilon cannot alter the fit.
+The historical calculation does **not** reuse current
 school medians or transfer estimates. Thus this freshman-based history is not
 the current graduate-adjusted professional ranking.
 
